@@ -1,8 +1,7 @@
 # coding=utf-8
-import re
-from itertools import imap
 from threading import Thread
 from os import listdir
+from nltk import SnowballStemmer
 
 
 class ReadFile:
@@ -20,7 +19,7 @@ class ReadFile:
         self.resource_path = resource_path
         self.stop_words = open(stop_words_path, 'r+').read().split('\n')
         self.file_names = listdir(resource_path)
-        indexes = range(0, self.file_names.__len__(), 50)[1:]
+        indexes = range(0, self.file_names.__len__(), 100)[1:]
         prev = 0
         for index in indexes:
             self.split_file_names.append(self.file_names[prev:index])
@@ -30,17 +29,20 @@ class ReadFile:
             self.split_file_names.append(self.file_names)
         else:
             self.split_file_names.append(self.file_names[indexes[-1]:])
-        # self.play()
-        self.play_without_threads()
+        self.play()
+        # self.play_without_threads()
 
     def play_without_threads(self):
         self.concurrent_function(self.file_names, self.resource_path)
 
     def play(self):
         for i in range(self.number_of_threads):
-            process = Thread(target=self.concurrent_function, args=[self.split_file_names.pop(), self.resource_path])
-            process.start()
-            self.threads.append(process)
+            if len(self.split_file_names) > 0:
+                process = Thread(target=self.concurrent_function,
+                                 args=[self.split_file_names.pop(), self.resource_path])
+                print ("############# Thread start: %d\n" % i),
+                process.start()
+                self.threads.append(process)
         for process in self.threads:
             process.join()
 
@@ -48,20 +50,35 @@ class ReadFile:
     def concurrent_function(self, current_file_names, resource_path):
         corpus_dictionary = []
         parser = Parse(self.stop_words)
+        stemmer = SnowballStemmer("english")
         for file_name in current_file_names:
-            print ("------------------------ Start working on file: %s ------------------------" %file_name)
+            # print ('------- Start working on file: %s -------' % file_name)
             current_file = open(resource_path + file_name + "/" + file_name, "r").read()
             for doc in current_file.split("</DOC>\n\n<DOC>"):
                 # parsed_doc = Parse(doc, corpus_dictionary)
+                doc_num = doc.split('</DOCNO>')[0].split('<DOCNO>')[1].replace(' ', '')
                 doc_tokens = parser.get_tokens(doc)
-                current_parsed_doc = parser.parse_document(doc_tokens)
+                current_parsed_doc = parser.parse_document(doc_num, doc_tokens)
+                current_stemmed_doc = self.stem_document(stemmer, current_parsed_doc)
                 pass
             # print(parsed_doc.document_terms)
+            print("Parsed File %s\n" % file_name),
+
         # print current_file_names
+
+    @staticmethod
+    def stem_document(stemmer, doc_terms):
+        stemmed_doc_terms = []
+        for term in doc_terms:
+            if type(term) is str and term.isalpha() and term.islower():
+                stemmed_doc_terms.append(stemmer.stem(term))
+            else:
+                stemmed_doc_terms.append(term)
+        return stemmed_doc_terms
 
 
 class Parse:
-    corpus_dictionary = []
+    corpus_dictionary = {}
     stop_words = []
     uppercase_terms = []
 
@@ -93,35 +110,35 @@ class Parse:
         self.stop_words = stop_words
         self.corpus_dictionary = []
 
-    def get_tokens(self, doc):
-        text = (re.search('<TEXT>(.*)</TEXT>', doc.replace("\n", " "))).group(1)
+    @staticmethod
+    def get_tokens(doc):
+        text = doc.split('<TEXT>')[1].split('</TEXT>')[0].replace("\n", " ")
+        # text = (re.search('<TEXT>(.*)</TEXT>', doc.replace("\n", " "))).group(1)
         split_text = (text.replace(':', '').replace('"', '').replace('!', '').replace('?', '').replace("'", '')
-                     .replace('*', '').replace('(', '').replace(')', '').replace('[', '').replace('|', '')
-                     .replace(']', '').replace('{', '').replace('}', '').replace(';', '').replace('#', '')
-                     .replace(',.', '').replace('.-', '').replace('\ ', '').replace('+', '').replace('_', '')
-                     .replace('=', '').replace('\r', '').replace('\n', '').replace('  ', ' ').replace('--', ' ')
-                     .replace('\t', '').replace('-,', ' ').replace('..', '').split(' '))
+                      .replace('*', '').replace('(', '').replace(')', '').replace('[', '').replace('|', '')
+                      .replace(']', '').replace('{', '').replace('}', '').replace(';', '').replace('#', '')
+                      .replace(',.', '').replace('.-', '').replace('\ ', '').replace('+', '').replace('_', '')
+                      .replace('=', '').replace('\r', '').replace('\n', '').replace('  ', ' ').replace('--', ' ')
+                      .replace('\t', '').replace('-,', ' ').replace('..', '').split(' '))
         while split_text.__contains__(''):
             split_text.remove('')
         return split_text
 
-    def parse_document(self, tokens):
+    def parse_document(self, doc_num, tokens):
         terms = []
         doc_terms = {}
+        term_index = 0
         index = 0
         while index < len(tokens):
             terms_to_add = []
             token = str(tokens[index])
-            print "%s ->" % token,
+            # print "%s ->" % token,
             # If token ends with "." or "," delete last char
             if (type(token) is str and len(token) > 1 and
                     (token[len(token) - 1] == "." or token[len(token) - 1] == "," or token[len(token) - 1] == "-")):
                 token = token[:-1]
 
-            if (token in self.stop_words and not
-                    (token == 'between' and index < len(tokens) - 2 and tokens[index + 2] == 'and')):
-                index += 1
-            elif token[0].isdigit():
+            if token[0].isdigit():
                 (terms_to_add, index) = self.number_parser(tokens, token, index)
             elif token[0].isalpha():
                 (terms_to_add, index) = self.word_parser(tokens, token, index)
@@ -133,17 +150,49 @@ class Parse:
                 index += 1
 
             for new_term in terms_to_add:
-                print ('\'%s\' ' % new_term),
-                terms.append(new_term)
+                # print ('\'%s\' ' % new_term),
+                # terms.append(new_term)
+
                 new_term_str = str(new_term)
-                if new_term in doc_terms:
-                    doc_terms[new_term_str] += 1
-                else:
-                    if type(new_term) is str and new_term.upper() in doc_terms:
-                        doc_terms[new_term.lower()] = doc_terms.pop(new_term.upper(), None) + 1
+
+                if self.contains_only_numbers(new_term_str):
+                    if doc_num not in self.corpus_dictionary[new_term_str]['docs']:
+                        self.corpus_dictionary[new_term_str]['docs'].append(doc_num)
+                    if new_term_str in doc_terms:
+                        doc_terms[new_term_str]['tf'] += 1
+                        doc_terms[new_term_str]['indexes'].append(term_index)
                     else:
-                        doc_terms[new_term_str] = 1
-            print ("")
+                        doc_terms[new_term_str] = {'tf': 1, 'indexes': [term_index]}
+
+                else:
+                    if new_term_str[0].isupper():
+                        if new_term_str.lower() in self.corpus_dictionary:
+                            if doc_num not in self.corpus_dictionary[new_term_str.lower()]['docs']:
+                                self.corpus_dictionary[new_term_str.lower()]['docs'].append(doc_num)
+                            doc_terms[new_term_str.lower()]['tf'] += 1
+                            doc_terms[new_term_str.lower()]['indexes'].append(term_index)
+                        else:
+                            if new_term_str.upper() not in self.corpus_dictionary:
+                                self.corpus_dictionary[new_term_str.upper()]['docs'].append(doc_num)
+                                doc_terms[new_term_str.upper()] = {'tf': 1, 'indexes': [term_index]}
+                            else:
+                                doc_terms[new_term_str.lower()]['tf'] += 1
+                                doc_terms[new_term_str.lower()]['indexes'].append(term_index)
+                    elif new_term_str[0].islower():
+                        if new_term_str not in self.corpus_dictionary:
+                            if new_term_str.upper() in self.corpus_dictionary:
+                                temp_docs = self.corpus_dictionary[new_term_str.upper()]['docs']
+                                self.corpus_dictionary.remove([new_term.upper()])
+                                self.corpus_dictionary[new_term_str.lower()]['docs'] = temp_docs
+                            self.corpus_dictionary[new_term_str.lower()]['docs'].append(doc_num)
+                            temp_tf = doc_terms[new_term_str.upper()]['tf'] + 1
+                            temp_indexes = doc_terms[new_term_str.upper()]['indexes']
+                            temp_indexes.append(term_index)
+                            doc_terms[new_term_str] = {'tf': temp_tf, 'indexes': temp_indexes}
+
+                term_index += 1
+
+            # print ("")
         return terms
 
     def number_parser(self, tokens, token, index):
@@ -154,7 +203,7 @@ class Parse:
                                    or token.__contains__('^') or token.__contains__('@') or token.__contains__('&')
                                    or token.__contains__('..') or token.__contains__('--') or token.__contains__('\ ')
                                    or token.count('.') > 1 or token.count('-') > 1
-                                   or ((not token.__contains__('-')) and re.search('[a-zA-Z]', token))):
+                                   or ((not token.__contains__('-')) and self.contains_letter(token))):
             new_terms.append(token)
             index += 1
 
@@ -182,7 +231,7 @@ class Parse:
             (new_terms, index) = self.number_parser_price(tokens, token, index)
 
         # Regular Number:
-        elif (bool(re.match('^[0-9]+$', token)) or
+        elif (self.contains_only_numbers(token) or
               (type(token) is str and (token.__contains__(',') or token.__contains__('.')))):
             (new_terms, index) = self.number_parser_regular(tokens, token, index)
         else:
@@ -239,6 +288,20 @@ class Parse:
             final_new_terms.append(part)
         final_new_terms.append(token)
         return final_new_terms, index + 1
+
+    @staticmethod
+    def contains_letter(a):
+        for char in a:
+            if char.isalpha():
+                return True
+        return False
+
+    @staticmethod
+    def contains_only_numbers(a):
+        for char in a:
+            if not char.isdigit():
+                return False
+        return True
 
     @staticmethod
     def range_parts_are_numeric(range_parts):
@@ -307,7 +370,22 @@ class Parse:
 
     def number_parser_price(self, tokens, token, index):
         new_terms = []
-        num = float(token.replace(',', ''))
+        if ',' in token:
+            num = float(token.replace(',', ''))
+            if 1000000 > num >= 1000 and num % 1000 == 0:
+                num = int(num)
+            elif 1000000000 > num >= 1000000 and num % 1000000 == 0:
+                num = int(num)
+            elif 1000000000000 > num >= 1000000000 and num % 1000000000 == 0:
+                num = int(num)
+        elif type(token) is float:
+            num = float(token)
+        elif type(token) is str and '.' in token:
+            num = float(token)
+        elif float(token) % 1000 != 0 and float(token) > 1000:
+            num = float(token)
+        else:
+            num = int(token)
         if index + 1 < len(tokens):
             if tokens[index + 1] in self.dollar_names:
                 index += 1
@@ -326,7 +404,11 @@ class Parse:
         if num >= 1000000:
             if num % 1000000 == 0:
                 num = int(num)
-            new_terms.extend([num / 1000000, 'M', 'Dollars'])
+            if type(num) is int:
+                new_terms.extend([int(num / 1000000), 'M', 'Dollars'])
+            else:
+                new_terms.extend([num / 1000000, 'M', 'Dollars'])
+
         else:
             new_terms.extend([token, 'Dollars'])
         return new_terms, index + 1
@@ -336,7 +418,7 @@ class Parse:
         if index < len(tokens) - 1 and tokens[index + 1] in self.regular_number_names:
             new_terms.append(self.term_word(tokens, token, index))
             index += 1
-        elif type(tokens[index]) is str and any(imap(tokens[index].__contains__, self.months_in_number)):
+        elif token.count('.') > 1:
             pass
         else:
             new_terms.append(self.term_number(token))
@@ -390,15 +472,24 @@ class Parse:
         else:
             num = int(term)
         if 1000 <= num < 1000000:
-            new_term = (num / 1000)
+            if type(num) is int:
+                new_term = int(num / 1000)
+            else:
+                new_term = (num / 1000)
             new_term_str = new_term.__str__()
             new_term_str += 'K'
         elif 1000000 <= num < 1000000000:
-            new_term = (num / 1000000)
+            if type(num) is int:
+                new_term = int(num / 1000000)
+            else:
+                new_term = int(num / 1000000)
             new_term_str = new_term.__str__()
             new_term_str += 'M'
         elif 1000000000 <= num:
-            new_term = (num / 1000000000)
+            if type(num) is int:
+                new_term = int(num / 1000000000)
+            else:
+                new_term = int(num / 1000000000)
             new_term_str = new_term.__str__()
             new_term_str += 'B'
         else:
@@ -409,7 +500,7 @@ class Parse:
     def money_parser(self, tokens, token, index):
         new_terms = []
         new_temp_terms = []
-        if token.__contains__('-') or re.search('[a-zA-Z]', token) or token.__contains__('/'):
+        if token.__contains__('-') or self.contains_letter(token) or token.__contains__('/') or token.count('.') > 1:
             return [token], index + 1
         token = token[1:len(token)]
         num = token.replace(',', '')
@@ -473,30 +564,31 @@ class Parse:
                     new_terms[i] = new_terms[i].lower()
         elif token in self.months_names and index + 1 < len(tokens) and tokens[index + 1][0].isdigit():
             pass
+        elif token in self.stop_words or token.lower() in self.stop_words:
+            return new_terms, index + 1
         else:
-            if token[0].isupper():
-                if token.lower() in self.corpus_dictionary:
-                    new_terms.append(token.lower())
-                else:
-                    if token.upper() not in self.corpus_dictionary:
-                        self.corpus_dictionary.append(token.upper())
-                    new_terms.append(token.upper())
-            else:
-                if token not in self.corpus_dictionary:
-                    if token.upper() in self.corpus_dictionary:
-                        self.corpus_dictionary.remove(token.upper())
-                    self.corpus_dictionary.append(token)
-                new_terms.append(token)
+            new_terms.append(token)
         return new_terms, index + 1
 
 
 ########################################
 
 
-root_resource_path = "C:/Users/yogev.s/PycharmProjects/Yankale/resources/test/"
+# nested_dict = {'ABC': {'tf': 1, 'indexes': [1, 2, 3]}}
+# i = 1
+# term = 'ABC'
+#
+# if nested_dict.__contains__(term):
+#     nested_dict[term]['tf'] += 1
+#     nested_dict[term]['indexes'].append(i)
+# else:
+#     nested_dict[term] = {'tf': 1, 'indexes': [i]}
+
+
+root_resource_path = "C:/Users/yogev.s/PycharmProjects/Yankale/resources/corpus/"
 stop_words_path = "C:/Users/yogev.s/PycharmProjects/Yankale/resources/stop_words.txt"
 ReadFile(root_resource_path, stop_words_path)
-print "pass"
+print("pass")
 
 # number_of_threads = 50
 #
