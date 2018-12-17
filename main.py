@@ -1271,6 +1271,8 @@ class Index:
             line = linecache.getline(final_merged_posting_file_path, i)
         index_dictionary_file.write('@@@')
 
+# Itay Test
+
 
 # ---------------- MAIN FUNCTION ---------------- #
 
