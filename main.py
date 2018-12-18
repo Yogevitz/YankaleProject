@@ -32,11 +32,11 @@ class GUI:
     def __init__(self, root):
         self.topFrame = Frame(root)
         windowWidth = 300
-        windowHeight = 275
+        windowHeight = 325
         positionRight = int(root.winfo_screenwidth() / 2 - windowWidth / 2)
         positionDown = int(root.winfo_screenheight() / 2 - windowHeight / 2)
         root.title("Boogle")
-        root.geometry("300x275+{}+{}".format(positionRight, positionDown))
+        root.geometry("300x325+{}+{}".format(positionRight, positionDown))
         root.resizable(0, 0)
         self.text_Resources_Path = Label(root, text="Resources Path:")
         self.text_Save_Path = Label(root, text="Save Path:")
