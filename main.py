@@ -9,7 +9,7 @@
 import json
 import os
 import time
-from pip._vendor import requests
+import requests
 from tkinter import *
 import tkinter
 import tkinter.messagebox
@@ -27,7 +27,11 @@ class GUI:
     entry_Stemming_Bool = 0
     global cities_posting
     global main_index
+    global main_dictionary
+    global docs_dictionary
     global number_of_docs
+    global total_length_of_docs
+    global avgdl
 
     def __init__(self, root):
         self.topFrame = Frame(root)
@@ -53,7 +57,7 @@ class GUI:
         self.start_button = Button(text="Start", fg='black', command=lambda: self.start_work())
         self.start_button.grid(row=3, column=1)
         self.entry_Stemming_Bool = tkinter.IntVar()
-        self.stemmerLabel = Checkbutton(root, text="stemming", variable=self.entry_Stemming_Bool)
+        self.stemmerLabel = Checkbutton(root, text="Stemming", variable=self.entry_Stemming_Bool)
         self.stemmerLabel.grid(row=3, column=0)
 
         self.text_Queries_Path = Label(root, text="Queries Path:")
@@ -104,6 +108,10 @@ class GUI:
 
     # need to add the paths and the errors
     def start_work(self):
+        global main_dictionary
+        global number_of_docs
+        global total_length_of_docs
+        global avgdl
         if self.entry_Resources_Path.get() == '' or self.entry_Save_Path.get() == '':
             tkinter.messagebox.showerror("Error", "Please fill in Resources Path and Save Path")
             # self.entry_Resources_Path = ''
@@ -178,6 +186,8 @@ class GUI:
             if stemming_bool:
                 ending = '_with_stemming'
 
+            avgdl = total_length_of_docs / number_of_docs
+
             # print('Start Indexing')
 
             indexer_index = 0
@@ -247,7 +257,7 @@ class GUI:
             finish_window.geometry("250x100+{}+{}".format(positionRight, positionDown))
             num_of_docs_label = Label(finish_window, text="Number of indexed documents: %d" % number_of_docs)
             num_of_terms_label = Label(finish_window,
-                                       text="Number of unique terms: %d" % (len(main_index.main_dictionary.keys())))
+                                       text="Number of unique terms: %d" % (len(main_dictionary.keys())))
             total_runtime = float("{0:.2f}".format(finish-start))
             runtime_label = Label(finish_window, text=("Total Runtime (seconds): %s" % total_runtime))
             num_of_docs_label.grid(row=0, column=1)
@@ -279,6 +289,7 @@ class GUI:
         # print(root.queries_folder_name)
 
     def reset(self):
+        global main_dictionary
         #     need to delete thus label from the label
         if self.entry_Save_Path.get() == '':
             tkinter.messagebox.showerror("Error", "Please fill in a Save Path")
@@ -288,7 +299,7 @@ class GUI:
             if self.entry_Save_Path is not None:
                 self.entry_Save_Path.delete(0, END)
             self.language_list.delete(0, END)
-            main_index.main_dictionary = {}
+            main_dictionary = {}
             if os.path.exists(root.file_save_name + '/posting.txt'):
                 os.remove(root.file_save_name + '/posting.txt')
             if os.path.exists(root.file_save_name + '/posting_with_stemming.txt'):
@@ -305,7 +316,8 @@ class GUI:
 
     def show_dictionary(self):
         # print("Show Dictionary")
-        if len(main_index.main_dictionary.keys()) == 0:
+        global main_dictionary
+        if len(main_dictionary.keys()) == 0:
             tkinter.messagebox.showerror("Error", "There is no dictionary loaded")
         else:
             window = Toplevel(root)
@@ -322,11 +334,12 @@ class GUI:
             index_list.config(yscrollcommand=scrollbar.set)
             # index_lines = open(self.entry_Save_Path.get() + ('/index%s.txt' % ending), 'r').readlines()
             index_list.insert(END, "Term     ->     TF")
-            for key in sorted(main_index.main_dictionary.keys(), key=str.lower):
-                index_list.insert(END, key + '     ->     ' + main_index.main_dictionary[key]['tf'])
+            for key in sorted(main_dictionary.keys(), key=str.lower):
+                index_list.insert(END, key + '     ->     ' + main_dictionary[key]['tf'])
 
     def load_dictionary(self):
         # print("Load Dictionary")
+        global main_dictionary
         ending = ''
         if self.entry_Stemming_Bool.get():
             ending = '_with_stemming'
@@ -335,7 +348,7 @@ class GUI:
         else:
             self.status_text_string.set("Loading...")
             self.text_status.config(fg="Red")
-            main_index.main_dictionary = {}
+            main_dictionary = {}
             loaded_file = open(self.entry_Save_Path.get() + ('/index%s.txt' % ending), 'r').readlines()
             for line in loaded_file:
                 if not line.__contains__('@'):
@@ -343,7 +356,7 @@ class GUI:
                     term = line_split[0]
                     term_index = line_split[1]
                     term_tf = line_split[2]
-                    main_index.main_dictionary[term] = {'post_index': term_index,
+                    main_dictionary[term] = {'post_index': term_index,
                                                         'tf': term_tf}
             self.status_text_string.set("Dictionary Loaded!")
             self.text_status.config(fg="Blue")
@@ -1168,7 +1181,7 @@ class Parse:
                     self.terms_dictionary[term.lower()]['tf_per_doc'].update(tmp_dict)
 
     def save_parser_data(self):
-
+        global docs_dictionary
         # -------- terms_dictionary --------
         # id:
         #   term
@@ -1189,7 +1202,8 @@ class Parse:
         if self.stem_bool:
             ending = '_with_stemming'
         terms_file_name = (('parser_%d_terms' % self.parser_index) + ending + '.txt')
-        docs_file_name = (('parser_%d_docs' % self.parser_index) + ending + '.txt')
+        # docs_file_name = (('parser_%d_docs' % self.parser_index) + ending + '.txt')
+        docs_file_name = ('parser_docs' + ending + '.txt')
         open(terms_file_name, "w")
         terms_file = open(terms_file_name, "ab")
         for key in sorted(self.terms_dictionary.keys(), key=str.lower):
@@ -1198,13 +1212,17 @@ class Parse:
                 if 'tf_per_doc' in self.terms_dictionary[key].keys() else ''
             terms_file.write("<" + key + "~" + str_df + "~" + str_tf_per_doc + ">\n")
         terms_file.write("@@@")
-        open(docs_file_name, "w")
         docs_file = open(docs_file_name, "ab")
         for doc in sorted(self.docs_dictionary.keys(), key=str.lower):
             str_max_tf = str(self.docs_dictionary[doc]['max_tf'])
             str_max_term = str(self.docs_dictionary[doc]['max_term'])
             str_num_of_terms = str(self.docs_dictionary[doc]['num_of_terms'])
             str_doc_length = str(self.docs_dictionary[doc]['doc_length'])
+            docs_dictionary[doc] = {'length': str_doc_length,
+                                    'max_tf': str_max_tf,
+                                    'max_term': str_max_term,
+                                    'num_of_terms': str_num_of_terms,
+                                    'city': self.docs_dictionary[doc]['doc_city']}
             docs_file.write("<" + doc + "~" + str_max_tf + "~" + str_max_term + '~'
                             + str_num_of_terms + "~" + self.docs_dictionary[doc]['doc_city'] + "~" + str_doc_length + ">\n")
         docs_file.write("@@@")
@@ -1212,13 +1230,11 @@ class Parse:
 
 
 class Index:
-
     stemmingB = False
-    main_dictionary = {}
+    global main_dictionary
 
     def __init__(self):
         self.stemmingB = False
-        self.main_dictionary = {}
 
     def set_stemming_bool(self, bool):
         self.stemmingB = bool
@@ -1282,7 +1298,7 @@ class Index:
 
     # Function will create the indexed dictionary for the posting
     def build_index_dictionary(self, save_path, final_merged_posting_file_path):
-        self.main_dictionary = {}
+        global main_dictionary
         ending = ''
         if self.stemmingB:
             ending = '_with_stemming'
@@ -1301,13 +1317,11 @@ class Index:
             tmp_corpus_tf += int((line_split_colon[len(line_split_colon) - 1]).split('}')[0])
             tmp_posting_line_index = i - 1
             index_dictionary_file.write(tmp_term + '~' + str(tmp_posting_line_index) + '~' + str(tmp_corpus_tf) + '\n')
-            self.main_dictionary[tmp_term] = {'post_index': str(tmp_posting_line_index),
-                                              'tf': str(tmp_corpus_tf)}
+            main_dictionary[tmp_term] = {'post_index': str(tmp_posting_line_index),
+                                         'tf': str(tmp_corpus_tf)}
             i += 1
             line = linecache.getline(final_merged_posting_file_path, i)
         index_dictionary_file.write('@@@')
-
-# Itay Test2
 
 
 # ---------------- MAIN FUNCTION ---------------- #
@@ -1339,8 +1353,13 @@ if __name__ == '__main__':
     # print('START')
 
     main_index = Index()
+    main_dictionary = {}
+    docs_dictionary = {}
+
     cities_posting = {}
     number_of_docs = 0
+    total_length_of_docs = 0
+    avgdl = 0
 
     root = Tk()
     g = GUI(root)
