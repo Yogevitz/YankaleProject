@@ -186,7 +186,7 @@ class GUI:
             if stemming_bool:
                 ending = '_with_stemming'
 
-            avgdl = total_length_of_docs / number_of_docs
+            avgdl = float(total_length_of_docs) / number_of_docs
 
             # print('Start Indexing')
 
@@ -244,17 +244,20 @@ class GUI:
 
             # print('Done Indexing')
 
+            global docs_dictionary
+            global main_dictionary
+
             finish = time.time()
 
             self.status_text_string.set("Done!")
             self.text_status.config(fg="Green")
 
             finish_window = Toplevel(root)
-            windowWidth = 250
-            windowHeight = 100
-            positionRight = int(root.winfo_screenwidth() / 2 - windowWidth / 2)
-            positionDown = int(root.winfo_screenheight() / 2 - windowHeight / 2)
-            finish_window.geometry("250x100+{}+{}".format(positionRight, positionDown))
+            window_width = 250
+            window_height = 100
+            position_right = int(root.winfo_screenwidth() / 2 - window_width / 2)
+            position_down = int(root.winfo_screenheight() / 2 - window_height / 2)
+            finish_window.geometry("250x100+{}+{}".format(position_right, position_down))
             num_of_docs_label = Label(finish_window, text="Number of indexed documents: %d" % number_of_docs)
             num_of_terms_label = Label(finish_window,
                                        text="Number of unique terms: %d" % (len(main_dictionary.keys())))
@@ -314,18 +317,19 @@ class GUI:
                 os.remove(root.file_save_name + '/cities_posting.txt')
             # print("restarting")
 
-    def show_dictionary(self):
+    @staticmethod
+    def show_dictionary():
         # print("Show Dictionary")
         global main_dictionary
         if len(main_dictionary.keys()) == 0:
             tkinter.messagebox.showerror("Error", "There is no dictionary loaded")
         else:
             window = Toplevel(root)
-            windowWidth = 300
-            windowHeight = 275
-            positionRight = int(root.winfo_screenwidth() / 2 - windowWidth / 2)
-            positionDown = int(root.winfo_screenheight() / 2 - windowHeight / 2)
-            window.geometry("300x275+{}+{}".format(positionRight, positionDown))
+            window_width = 300
+            window_height = 275
+            position_right = int(root.winfo_screenwidth() / 2 - window_width / 2)
+            position_down = int(root.winfo_screenheight() / 2 - window_height / 2)
+            window.geometry("300x275+{}+{}".format(position_right, position_down))
             index_list = Listbox(window, width=window.winfo_width(), height=window.winfo_height())
             index_list.pack(side="left", fill="both", expand=1)
             scrollbar = Scrollbar(window, orient="vertical")
@@ -375,7 +379,7 @@ class ReadFile:
     cities_properties = {}
 
     def __init__(self, folder_path):
-        self.resources_path = folder_path + '/corpus/'
+        self.resources_path = folder_path + '/test/'
         self.file_names = os.listdir(self.resources_path)
         self.file_names_split = []
         indexes = range(0, self.file_names.__len__(), min(self.file_names.__len__(),
@@ -541,7 +545,7 @@ class Parse:
     #   max_tf of term                                  number
     #   num of terms                                    number
     #   doc_city                                        string
-    docs_dictionary = {}
+    global docs_dictionary
     cities = {}
     global cities_posting
 
@@ -573,9 +577,10 @@ class Parse:
         self.parser_index = index
         self.stop_words = set(open(sw_path).read().split())
         self.terms_dictionary = {}
-        self.docs_dictionary = {}
         self.stem_bool = stem_bool
         self.cities = cities
+        global docs_dictionary
+        docs_dictionary = {}
 
     def parse(self, docs_texts, docs_properties):
         # print("Start Parsing")
@@ -1145,11 +1150,12 @@ class Parse:
         #   num of terms
         #   doc_city
         #   doc_length
-        self.docs_dictionary[doc_name] = {'max_tf': max_tf,
-                                          'max_term': max_term,
-                                          'num_of_terms': len(doc_terms.keys()),
-                                          'doc_city': doc_properties['city'],
-                                          'doc_length': doc_length}
+        global docs_dictionary
+        docs_dictionary[doc_name] = {'max_tf': max_tf,
+                                     'max_term': max_term,
+                                     'num_of_terms': len(doc_terms.keys()),
+                                     'doc_city': doc_properties['city'],
+                                     'doc_length': doc_length}
         for term in doc_terms:
 
             # { city :                                                           }
@@ -1213,18 +1219,13 @@ class Parse:
             terms_file.write("<" + key + "~" + str_df + "~" + str_tf_per_doc + ">\n")
         terms_file.write("@@@")
         docs_file = open(docs_file_name, "ab")
-        for doc in sorted(self.docs_dictionary.keys(), key=str.lower):
-            str_max_tf = str(self.docs_dictionary[doc]['max_tf'])
-            str_max_term = str(self.docs_dictionary[doc]['max_term'])
-            str_num_of_terms = str(self.docs_dictionary[doc]['num_of_terms'])
-            str_doc_length = str(self.docs_dictionary[doc]['doc_length'])
-            docs_dictionary[doc] = {'length': str_doc_length,
-                                    'max_tf': str_max_tf,
-                                    'max_term': str_max_term,
-                                    'num_of_terms': str_num_of_terms,
-                                    'city': self.docs_dictionary[doc]['doc_city']}
+        for doc in sorted(docs_dictionary.keys(), key=str.lower):
+            str_max_tf = str(docs_dictionary[doc]['max_tf'])
+            str_max_term = str(docs_dictionary[doc]['max_term'])
+            str_num_of_terms = str(docs_dictionary[doc]['num_of_terms'])
+            str_doc_length = str(docs_dictionary[doc]['doc_length'])
             docs_file.write("<" + doc + "~" + str_max_tf + "~" + str_max_term + '~'
-                            + str_num_of_terms + "~" + self.docs_dictionary[doc]['doc_city'] + "~" + str_doc_length + ">\n")
+                            + str_num_of_terms + "~" + docs_dictionary[doc]['doc_city'] + "~" + str_doc_length + ">\n")
         docs_file.write("@@@")
         pass
 
@@ -1324,7 +1325,10 @@ class Index:
         index_dictionary_file.write('@@@')
 
 
-# ---------------- MAIN FUNCTION ---------------- #
+class Searcher:
+    pass
+
+# ---------------- MAIN ---------------- #
 
 
 # ------ Concurrent Functions ------
