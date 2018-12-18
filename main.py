@@ -1201,8 +1201,9 @@ class Parse:
             str_max_tf = str(self.docs_dictionary[doc]['max_tf'])
             str_max_term = str(self.docs_dictionary[doc]['max_term'])
             str_num_of_terms = str(self.docs_dictionary[doc]['num_of_terms'])
+            str_doc_length = str(self.docs_dictionary[doc]['doc_length'])
             docs_file.write("<" + doc + "~" + str_max_tf + "~" + str_max_term + '~'
-                            + str_num_of_terms + "~" + self.docs_dictionary[doc]['doc_city'] + ">\n")
+                            + str_num_of_terms + "~" + self.docs_dictionary[doc]['doc_city'] + "~" + str_doc_length + ">\n")
         docs_file.write("@@@")
         pass
 
