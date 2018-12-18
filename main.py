@@ -510,6 +510,7 @@ class Parse:
     stop_words = set()
     stemmer = Stemmer.Stemmer('english')
     global number_of_docs
+    global total_length_of_docs
 
     # id:
     #   term
@@ -563,11 +564,13 @@ class Parse:
     def parse(self, docs_texts, docs_properties):
         # print("Start Parsing")
         global number_of_docs
+        global total_length_of_docs
         for doc_name in docs_texts:
             tokens = self.get_tokens(docs_texts[doc_name]['text'])
-            (doc_terms, max_tf, max_term) = self.parse_document(doc_name, tokens)
-            self.save_doc_data(doc_name, doc_terms, docs_properties[doc_name], max_tf, max_term)
+            (doc_terms, max_tf, max_term, doc_total_length) = self.parse_document(doc_name, tokens)
+            self.save_doc_data(doc_name, doc_terms, docs_properties[doc_name], max_tf, max_term, doc_total_length)
             number_of_docs += 1
+            total_length_of_docs += doc_total_length
         self.save_parser_data()
 
     @staticmethod
@@ -577,12 +580,15 @@ class Parse:
 
     def parse_document(self, doc_name, tokens):
         index = 0
+        doc_length = 0
         term_index = 0
         doc_terms = {}
         max_tf = 1
         max_term = ''
+        terms_to_add = []
 
         while index < len(tokens):
+            doc_length += len(terms_to_add)
             terms_to_add = []
             token = str(tokens[index])
 
@@ -614,7 +620,7 @@ class Parse:
 
                 (doc_terms, term_index, max_tf, max_term) =\
                     self.add_to_dictionaries(terms_to_add, doc_terms, doc_name, term_index, max_tf, max_term)
-        return doc_terms, max_tf, max_term
+        return doc_terms, max_tf, max_term, doc_length
 
     def add_to_dictionaries(self, terms_to_add, doc_terms, doc_name, term_index, max_tf, max_term):
 
@@ -1115,17 +1121,19 @@ class Parse:
             new_terms.append(token)
         return new_terms, index + 1
 
-    def save_doc_data(self, doc_name, doc_terms, doc_properties, max_tf, max_term):
+    def save_doc_data(self, doc_name, doc_terms, doc_properties, max_tf, max_term, doc_length):
         # id:
         #   doc_name
         # values:
         #   max_tf of term
         #   num of terms
         #   doc_city
+        #   doc_length
         self.docs_dictionary[doc_name] = {'max_tf': max_tf,
                                           'max_term': max_term,
                                           'num_of_terms': len(doc_terms.keys()),
-                                          'doc_city': doc_properties['city']}
+                                          'doc_city': doc_properties['city'],
+                                          'doc_length': doc_length}
         for term in doc_terms:
 
             # { city :                                                           }
@@ -1173,6 +1181,7 @@ class Parse:
         #   max_tf of term                                  number
         #   num of terms                                    number
         #   doc_city                                        string
+        #   doc_length                                      number
         ending = ''
         if self.stem_bool:
             ending = '_with_stemming'
