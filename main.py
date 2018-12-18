@@ -69,7 +69,7 @@ class GUI:
         self.RunButton.grid(row=6, column=1)
         self.QueryButton.grid(row=4, column=2)
         self.entry_Semantic_Bool = tkinter.IntVar()
-        self.stemmerLabel = Checkbutton(root, text="semantic", variable=self.entry_Semantic_Bool)
+        self.stemmerLabel = Checkbutton(root, text="Semantic", variable=self.entry_Semantic_Bool)
         self.stemmerLabel.grid(row=6, column=0)
 
         self.language = Label(root, text="Language:")
