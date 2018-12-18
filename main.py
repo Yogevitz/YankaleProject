@@ -23,6 +23,7 @@ import shutil
 class GUI:
     entry_Resources_Path = ''
     entry_Save_Path = ''
+    entry_Queries_Path = ''
     entry_Stemming_Bool = 0
     global cities_posting
     global main_index
@@ -54,23 +55,37 @@ class GUI:
         self.entry_Stemming_Bool = tkinter.IntVar()
         self.stemmerLabel = Checkbutton(root, text="stemming", variable=self.entry_Stemming_Bool)
         self.stemmerLabel.grid(row=3, column=0)
+
+        self.text_Queries_Path = Label(root, text="Queries Path:")
+        self.text_Query = Label(root, text="Query:")
+        self.entry_Queries_Path = Entry(root)
+        self.entry_Query = Entry(root)
+        self.RunButton = Button(text="Browse...", fg='black', command=lambda: self.browse_queries_folder())
+        self.QueryButton = Button(text="Run", fg='black')
+        self.text_Queries_Path.grid(row=4)
+        self.text_Query.grid(row=5)
+        self.entry_Queries_Path.grid(row=4, column=1)
+        self.entry_Query.grid(row=5, column=1)
+        self.RunButton.grid(row=4, column=2)
+        self.QueryButton.grid(row=5, column=2)
+
         self.language = Label(root, text="Language:")
-        self.language.grid(row=4, column=0)
+        self.language.grid(row=6, column=0)
         self.language_list = Listbox(root, width=20, height=5)
-        self.language_list.grid(row=4, column=1)
+        self.language_list.grid(row=6, column=1)
         self.reset_button = Button(text="Reset", fg='black', command=lambda: self.reset())
-        self.reset_button.grid(row=5, column=1)
+        self.reset_button.grid(row=7, column=1)
         self.dictionary_button = Button(text="Show Dictionary", fg='black', command=lambda: self.show_dictionary())
-        self.dictionary_button.grid(row=6, column=1)
+        self.dictionary_button.grid(row=8, column=1)
         self.load_dictionary_button = Button(text="Load Dictionary", fg='black',
                                              command=lambda: self.load_dictionary())
-        self.load_dictionary_button.grid(row=7, column=1)
+        self.load_dictionary_button.grid(row=9, column=1)
         self.text_status_label = Label(root, text="Status: ")
         self.status_text_string = StringVar()
         self.text_status = Label(root, textvariable=self.status_text_string, fg="blue")
         self.status_text_string.set("Ready to start")
-        self.text_status_label.grid(row=8, column=0)
-        self.text_status.grid(row=8, column=1)
+        self.text_status_label.grid(row=10, column=0)
+        self.text_status.grid(row=10, column=1)
 
         # image = Image("C:/Users/user/PycharmProjects/YankaleProject/resources/background.jpg")
         # background_image = root.PhotoImage(image)
@@ -251,6 +266,14 @@ class GUI:
         root.folder_name = filedialog.askdirectory()
         self.entry_Resources_Path.insert(0, root.folder_name)
         # print(root.folder_name)
+
+    def browse_queries_folder(self):
+        if len(self.entry_Queries_Path.get()) > 0:
+            self.entry_Queries_Path.delete(0, len(root.queries_folder_name))
+        # print("choose a folder")
+        root.queries_folder_name = filedialog.askdirectory()
+        self.entry_Queries_Path.insert(0, root.queries_folder_name)
+        # print(root.queries_folder_name)
 
     def reset(self):
         #     need to delete thus label from the label
