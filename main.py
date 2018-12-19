@@ -25,6 +25,7 @@ class GUI:
     entry_Save_Path = ''
     entry_Queries_Path = ''
     entry_Stemming_Bool = 0
+    list_cities = set()
     global cities_posting
     global main_index
     global main_dictionary
@@ -35,12 +36,12 @@ class GUI:
 
     def __init__(self, root):
         self.topFrame = Frame(root)
-        windowWidth = 300
-        windowHeight = 350
-        positionRight = int(root.winfo_screenwidth() / 2 - windowWidth / 2)
-        positionDown = int(root.winfo_screenheight() / 2 - windowHeight / 2)
+        window_width = 300
+        window_height = 400
+        position_right = int(root.winfo_screenwidth() / 2 - window_width / 2)
+        position_down = int(root.winfo_screenheight() / 2 - window_height / 2)
         root.title("Boogle")
-        root.geometry("300x350+{}+{}".format(positionRight, positionDown))
+        root.geometry("300x400+{}+{}".format(position_right, position_down))
         root.resizable(0, 0)
         self.text_Resources_Path = Label(root, text="Resources Path:")
         self.text_Save_Path = Label(root, text="Save Path:")
@@ -64,47 +65,37 @@ class GUI:
         self.text_Query = Label(root, text="Query:")
         self.entry_Queries_Path = Entry(root)
         self.entry_Query = Entry(root)
-        self.QueryButton = Button(text="Browse...", fg='black', command=lambda: self.browse_queries_folder())
-        self.RunButton = Button(text="Run", fg='black')
-        self.text_Queries_Path.grid(row=4)
-        self.text_Query.grid(row=5)
-        self.entry_Queries_Path.grid(row=4, column=1)
-        self.entry_Query.grid(row=5, column=1)
-        self.RunButton.grid(row=6, column=1)
-        self.QueryButton.grid(row=4, column=2)
+        self.queryButton = Button(text="Browse...", fg='black', command=lambda: self.browse_queries_folder())
+        self.runButton = Button(text="Run", fg='black')
+        self.text_Queries_Path.grid(row=6)
+        self.text_Query.grid(row=7)
+        self.entry_Queries_Path.grid(row=6, column=1)
+        self.entry_Query.grid(row=7, column=1)
+        self.runButton.grid(row=8, column=1)
+        self.queryButton.grid(row=6, column=2)
         self.entry_Semantic_Bool = tkinter.IntVar()
-        self.stemmerLabel = Checkbutton(root, text="Semantic", variable=self.entry_Semantic_Bool)
-        self.stemmerLabel.grid(row=6, column=0)
+        self.semanticLabel = Checkbutton(root, text="Semantic", variable=self.entry_Semantic_Bool)
+        self.semanticLabel.grid(row=5, column=1)
+        self.cityButton = Button(text="City Filter", fg='black', command=lambda: self.city_filter())
+        self.cityButton.grid(row=4, column=1)
 
         self.language = Label(root, text="Language:")
-        self.language.grid(row=7, column=0)
+        self.language.grid(row=9, column=0)
         self.language_list = Listbox(root, width=20, height=5)
-        self.language_list.grid(row=7, column=1)
+        self.language_list.grid(row=9, column=1)
         self.reset_button = Button(text="Reset", fg='black', command=lambda: self.reset())
-        self.reset_button.grid(row=8, column=1)
+        self.reset_button.grid(row=10, column=1)
         self.dictionary_button = Button(text="Show Dictionary", fg='black', command=lambda: self.show_dictionary())
-        self.dictionary_button.grid(row=9, column=1)
+        self.dictionary_button.grid(row=11, column=1)
         self.load_dictionary_button = Button(text="Load Dictionary", fg='black',
                                              command=lambda: self.load_dictionary())
-        self.load_dictionary_button.grid(row=10, column=1)
+        self.load_dictionary_button.grid(row=12, column=1)
         self.text_status_label = Label(root, text="Status: ")
         self.status_text_string = StringVar()
         self.text_status = Label(root, textvariable=self.status_text_string, fg="blue")
         self.status_text_string.set("Ready to start")
-        self.text_status_label.grid(row=11, column=0)
-        self.text_status.grid(row=11, column=1)
-
-        # image = Image("C:/Users/user/PycharmProjects/YankaleProject/resources/background.jpg")
-        # background_image = root.PhotoImage(image)
-        # background_label = root.Label(root, image=background_image)
-        # background_label.place(x=0, y=0, relwidth=1, relheight=1)
-        # theLabel = Label(root, text="question:")
-        # theLabel['fg'] = 'red'
-        # entry_Question = Entry(root)
-        # theLabel.grid(row=3, column=0)
-        # button3 = Button(text="send the question", fg='green')
-        # button3.grid(row=3, column=2)
-        # entry_Question.grid(row=3, column=1)
+        self.text_status_label.grid(row=13, column=0)
+        self.text_status.grid(row=13, column=1)
 
     # need to add the paths and the errors
     def start_work(self):
@@ -147,6 +138,9 @@ class GUI:
             self.language_list.delete(0, END)
             for language in sorted(read_file.language_dictionary):
                 self.language_list.insert(END, language)
+
+            for city in sorted(read_file.cities):
+                self.list_cities.add(city)
 
             main_index.set_stemming_bool(stemming_bool)
 
@@ -365,6 +359,60 @@ class GUI:
             self.status_text_string.set("Dictionary Loaded!")
             self.text_status.config(fg="Blue")
 
+    def city_filter(self):
+        city_window = Toplevel(root)
+        window_width = 200
+        window_height = 300
+        position_right = int(city_window.winfo_screenwidth() / 2 - window_width / 2)
+        position_down = int(city_window.winfo_screenheight() / 2 - window_height / 2)
+        city_window.title("this is city window!")
+        city_window.geometry("200x300+{}+{}".format(position_right, position_down))
+        self.status_text_string.set("Working on cities...")
+        self.text_status.config(fg="Red")
+        ok_button = Button(city_window, text="Ok", command=lambda: self.close_city_window(city_window))
+        ok_button.pack()
+        city_label = Label(city_window, text="City:")
+        city_label.pack()
+        scroll = Scrollbar(city_window, orient="vertical")
+        scroll.pack(side=RIGHT, fill=Y)
+        city_list = Text(city_window, width=30, height=15, yscrollcommand=scroll.set)
+        city_list.pack(side=LEFT)
+        scroll.config(command=city_list.yview)
+
+        for city in sorted(self.list_cities):
+            cb = Checkbutton(city_window, text="%s" % city)
+            city_list.window_create("end", window=cb)
+            city_list.insert("end", "\n")
+
+    def close_city_window(self, city_window):
+        city_window.destroy()
+        self.status_text_string.set("Waiting to your query...")
+        self.text_status.config(fg="Blue")
+
+    def open_doc(self, doc_number):
+        text_window = Toplevel(root)
+        window_width = 200
+        window_height = 300
+        position_right = int(text_window.winfo_screenwidth() / 2 - window_width / 2)
+        position_down = int(text_window.winfo_screenheight() / 2 - window_height / 2)
+        text_window.title("this is text window!")
+        text_window.geometry("200x300+{}+{}".format(position_right, position_down))
+        exit_button = Button(text_window, text="Exit", command=lambda: text_window.destroy())
+        exit_button.pack()
+        entity_button = Button(text_window, text="Entity", command=lambda: self.get_entity())
+        entity_button.pack()
+        text_label = Label(text_window, text="Text:")
+        text_label.pack()
+        scroll = Scrollbar(text_window, orient="vertical")
+        scroll.pack(side=RIGHT, fill=Y)
+        text_doc = Text(text_window, width=30, height=15, yscrollcommand=scroll.set)
+        text_doc.pack(side=LEFT)
+        scroll.config(command=text_doc.yview)
+        text_doc.insert("docnumber.text")
+
+    def get_entity(self):
+        pass
+
 
 class ReadFile:
     # docs_texts = {}
@@ -379,7 +427,7 @@ class ReadFile:
     cities_properties = {}
 
     def __init__(self, folder_path):
-        self.resources_path = folder_path + '/test/'
+        self.resources_path = folder_path + '/test1/'
         self.file_names = os.listdir(self.resources_path)
         self.file_names_split = []
         indexes = range(0, self.file_names.__len__(), min(self.file_names.__len__(),
