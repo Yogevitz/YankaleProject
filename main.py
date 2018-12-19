@@ -1374,7 +1374,60 @@ class Index:
 
 
 class Searcher:
-    pass
+    query = ''
+    query_terms = {}
+    docs_containing_current_terms = {}
+
+    def __init__(self, q):
+        self.query = q
+        self.query_terms.update(q.split(' '))
+
+    def find_docs_containing_current_terms(self):
+        global main_dictionary
+        global docs_dictionary
+        global g
+        for term in self.query_terms.keys():
+            # Get the index of the term in the posting
+            term_post_index = main_dictionary[term]['post_index']
+            # Get the term line in the posting file
+            term_post_line = linecache.getline(g.entry_Save_Path.get(), term_post_index)
+            # Get the term docs from the posting
+            term_docs = (term_post_line.split('~')[1])[:-1]
+            # Keep the term with and his frequencies in each doc
+            self.query_terms[term] = term_docs
+            # Keep all docs that contain terms from the query
+            self.docs_containing_current_terms.update(term_docs)
+
+
+class Ranker:
+    docs_ranks = {}
+    query_terms = {}
+    k1 = 1.5
+    b = 0.75
+
+    def __init__(self, docs, terms):
+        self.docs_ranks = {}
+        self.docs_ranks.update(docs.keys())
+        self.query_terms = terms
+
+    def rank(self):
+        global main_dictionary
+        global docs_dictionary
+        global avgdl
+        global number_of_docs
+        for doc in self.docs_ranks.keys():
+            score = 0
+            # Calculate the document score based on BM25
+            for term in self.query_terms:
+                term_idf = main_dictionary[term]['tf']
+                term_doc_tf = self.query_terms[term][doc]
+                len_of_doc = docs_dictionary[doc]['doc_length']
+                score += (term_idf *
+                          ((term_doc_tf * (self.k1 + 1)) /
+                           (term_doc_tf + (self.k1 * (1 - self.b +
+                                                      (self.b * len_of_doc / avgdl))))))
+            self.docs_ranks[doc] = score
+
 
 # ---------------- MAIN ---------------- #
 
