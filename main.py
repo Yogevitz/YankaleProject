@@ -66,7 +66,7 @@ class GUI:
         self.entry_Queries_Path = Entry(root)
         self.entry_Query = Entry(root)
         self.queryButton = Button(text="Browse...", fg='black', command=lambda: self.browse_queries_folder())
-        self.runButton = Button(text="Run", fg='black')
+        self.runButton = Button(text="Run", fg='black', command=lambda: self.start_search())
         self.text_Queries_Path.grid(row=6)
         self.text_Query.grid(row=7)
         self.entry_Queries_Path.grid(row=6, column=1)
@@ -259,7 +259,45 @@ class GUI:
             runtime_label = Label(finish_window, text=("Total Runtime (seconds): %s" % total_runtime))
             num_of_docs_label.grid(row=0, column=1)
             num_of_terms_label.grid(row=1, column=1)
-            runtime_label.grid(row=2, column=1)
+
+    def start_search(self):
+        search_results_window = Toplevel(root)
+        window_width = 400
+        window_height = 500
+        position_right = int(root.winfo_screenwidth() / 2 - window_width / 2)
+        position_down = int(root.winfo_screenheight() / 2 - window_height / 2)
+        search_results_window.geometry("500x500+{}+{}".format(position_right, position_down))
+
+        frame1 = Frame(search_results_window)
+        frame1.pack()
+
+        results_save_button = Button(frame1, text="Save Results")
+        results_save_button.pack(side="top")
+
+        frame2 = Frame(search_results_window)
+        frame2.pack()
+
+        vsb = Scrollbar(search_results_window, orient="vertical")
+        text = Text(search_results_window, width=40, height=20, yscrollcommand=vsb.set)
+        vsb.config(command=text.yview)
+        vsb.pack(side="right", fill="y")
+        text.pack(side="left", fill="both", expand=True)
+
+        for i in range(1, 51):
+            doc_index = Label(search_results_window, text="%d." % i)
+            doc_button = Button(search_results_window, text="doc #%s" % i)
+            text.window_create("end", window=doc_index)
+            text.window_create("end", window=doc_button)
+            text.insert("end", "\n")
+
+        frame3 = Frame(search_results_window)
+        frame3.pack()
+
+        pass
+
+    @staticmethod
+    def choose_doc(x):
+        print(x)
 
     def browse_save_file(self):
         if len(self.entry_Save_Path.get()) > 0:
@@ -427,7 +465,7 @@ class ReadFile:
     cities_properties = {}
 
     def __init__(self, folder_path):
-        self.resources_path = folder_path + '/test1/'
+        self.resources_path = folder_path + '/test/'
         self.file_names = os.listdir(self.resources_path)
         self.file_names_split = []
         indexes = range(0, self.file_names.__len__(), min(self.file_names.__len__(),
