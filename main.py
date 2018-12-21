@@ -18,6 +18,7 @@ import Stemmer
 import linecache
 import queue
 import shutil
+import ast
 
 
 class GUI:
@@ -76,7 +77,7 @@ class GUI:
         self.entry_Semantic_Bool = tkinter.IntVar()
         self.semanticLabel = Checkbutton(root, text="Semantic", variable=self.entry_Semantic_Bool)
         self.semanticLabel.grid(row=5, column=1)
-        self.cityButton = Button(text="City Filter", fg='black', command=lambda: self.city_filter())
+        self.cityButton = Button(text="Cities Filter", fg='black', command=lambda: self.city_filter())
         self.cityButton.grid(row=4, column=1)
 
         self.language = Label(root, text="Language:")
@@ -285,7 +286,8 @@ class GUI:
 
         for i in range(1, 51):
             doc_index = Label(search_results_window, text="%d." % i)
-            doc_button = Button(search_results_window, text="doc #%s" % i)
+            doc_button = Button(search_results_window, text="doc #%s" % i,
+                                command=lambda: self.open_doc(i))
             text.window_create("end", window=doc_index)
             text.window_create("end", window=doc_button)
             text.insert("end", "\n")
@@ -403,17 +405,14 @@ class GUI:
         window_height = 300
         position_right = int(city_window.winfo_screenwidth() / 2 - window_width / 2)
         position_down = int(city_window.winfo_screenheight() / 2 - window_height / 2)
-        city_window.title("this is city window!")
         city_window.geometry("200x300+{}+{}".format(position_right, position_down))
         self.status_text_string.set("Working on cities...")
         self.text_status.config(fg="Red")
-        ok_button = Button(city_window, text="Ok", command=lambda: self.close_city_window(city_window))
+        ok_button = Button(city_window, text="Save", width="8", command=lambda: self.close_city_window(city_window))
         ok_button.pack()
-        city_label = Label(city_window, text="City:")
-        city_label.pack()
         scroll = Scrollbar(city_window, orient="vertical")
         scroll.pack(side=RIGHT, fill=Y)
-        city_list = Text(city_window, width=30, height=15, yscrollcommand=scroll.set)
+        city_list = Text(city_window, width=30, height=17, yscrollcommand=scroll.set)
         city_list.pack(side=LEFT)
         scroll.config(command=city_list.yview)
 
@@ -424,7 +423,7 @@ class GUI:
 
     def close_city_window(self, city_window):
         city_window.destroy()
-        self.status_text_string.set("Waiting to your query...")
+        self.status_text_string.set("Waiting for query...")
         self.text_status.config(fg="Blue")
 
     def open_doc(self, doc_number):
@@ -1411,9 +1410,14 @@ class Index:
         index_dictionary_file.write('@@@')
 
 
+# Both Docs and Terms dictionaries are loaded (global)
 class Searcher:
+    # 'I love white chocolate'
     query = ''
+    # {'I':                        , 'love':             ...
+    #       {'doc1': 5, 'doc2': 4}           {'doc2': 3} ...
     query_terms = {}
+    # {'doc1', 'doc2', 'doc3', ...}
     docs_containing_current_terms = {}
 
     def __init__(self, q):
@@ -1428,13 +1432,13 @@ class Searcher:
             # Get the index of the term in the posting
             term_post_index = main_dictionary[term]['post_index']
             # Get the term line in the posting file
-            term_post_line = linecache.getline(g.entry_Save_Path.get(), term_post_index)
+            term_post_line = linecache.getline(g.entry_Save_Path.get() + "/postings.txt", term_post_index)
             # Get the term docs from the posting
-            term_docs = (term_post_line.split('~')[1])[:-1]
+            term_docs = ast.literal_eval((term_post_line.split('~')[2])[:-1])
             # Keep the term with and his frequencies in each doc
             self.query_terms[term] = term_docs
             # Keep all docs that contain terms from the query
-            self.docs_containing_current_terms.update(term_docs)
+            self.docs_containing_current_terms.update(term_docs.keys())
 
 
 class Ranker:
@@ -1444,8 +1448,7 @@ class Ranker:
     b = 0.75
 
     def __init__(self, docs, terms):
-        self.docs_ranks = {}
-        self.docs_ranks.update(docs.keys())
+        self.docs_ranks = docs
         self.query_terms = terms
 
     def rank(self):
@@ -1456,7 +1459,7 @@ class Ranker:
         for doc in self.docs_ranks.keys():
             score = 0
             # Calculate the document score based on BM25
-            for term in self.query_terms:
+            for term in self.query_terms.keys():
                 term_idf = main_dictionary[term]['tf']
                 term_doc_tf = self.query_terms[term][doc]
                 len_of_doc = docs_dictionary[doc]['doc_length']
@@ -1465,6 +1468,7 @@ class Ranker:
                            (term_doc_tf + (self.k1 * (1 - self.b +
                                                       (self.b * len_of_doc / avgdl))))))
             self.docs_ranks[doc] = score
+        self.docs_ranks = sorted(self.docs_ranks.items(), key=ast.operator.itemgetter(1), reverse=True)
 
 
 # ---------------- MAIN ---------------- #
