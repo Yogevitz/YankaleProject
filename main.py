@@ -262,7 +262,7 @@ class GUI:
             num_of_terms_label.grid(row=1, column=1)
 
     def start_search(self):
-        if self.entry_Queries_Path.get() == '' or self.entry_Query.get() == '':
+        if self.entry_Queries_Path.get() == '' and self.entry_Query.get() == '':
             tkinter.messagebox.showerror("Error", "Please fill Query or Queries Path")
         else:
             search_results_window = Toplevel(root)
@@ -413,14 +413,11 @@ class GUI:
         window_height = 300
         position_right = int(city_window.winfo_screenwidth() / 2 - window_width / 2)
         position_down = int(city_window.winfo_screenheight() / 2 - window_height / 2)
-        city_window.title("this is city window!")
         city_window.geometry("200x300+{}+{}".format(position_right, position_down))
         self.status_text_string.set("Working on cities...")
         self.text_status.config(fg="Red")
         ok_button = Button(city_window, text="Save", width="8", command=lambda: self.close_city_window(city_window))
         ok_button.pack()
-        city_label = Label(city_window, text="Cities:")
-        city_label.pack()
         scroll = Scrollbar(city_window, orient="vertical")
         scroll.pack(side=RIGHT, fill=Y)
         city_list = Text(city_window, width=30, height=17, yscrollcommand=scroll.set)
@@ -443,7 +440,6 @@ class GUI:
         window_height = 300
         position_right = int(text_window.winfo_screenwidth() / 2 - window_width / 2)
         position_down = int(text_window.winfo_screenheight() / 2 - window_height / 2)
-        text_window.title("this is entity window!")
         text_window.geometry("200x300+{}+{}".format(position_right, position_down))
         exit_button = Button(text_window, text="Exit", command=lambda: text_window.destroy())
         exit_button.pack()
@@ -1409,9 +1405,16 @@ class Index:
         index_dictionary_file.write('@@@')
 
 
+# Both Docs and Terms dictionaries are loaded (global)
 class Searcher:
+    # Assuming both Docs and Terms dictionaries are loaded (global)
+
+    # 'I love white chocolate'
     query = ''
+    # {'I':                        , 'love':             ...
+    #       {'doc1': 5, 'doc2': 4}           {'doc2': 3} ...
     query_terms = {}
+    # {'doc1', 'doc2', 'doc3', ...}
     docs_containing_current_terms = {}
 
     def __init__(self, q):
@@ -1442,8 +1445,7 @@ class Ranker:
     b = 0.75
 
     def __init__(self, docs, terms):
-        self.docs_ranks = {}
-        self.docs_ranks.update(docs.keys())
+        self.docs_ranks = docs
         self.query_terms = terms
 
     def rank(self):
@@ -1463,7 +1465,8 @@ class Ranker:
                            (term_doc_tf + (self.k1 * (1 - self.b +
                                                       (self.b * len_of_doc / avgdl))))))
             self.docs_ranks[doc] = score
-        self.docs_ranks = sorted(self.docs_ranks.items(), key=ast.operator.itemgettre(1), reverse=True)
+        self.docs_ranks = sorted(self.docs_ranks.items(), key=ast.operator.itemgetter(1), reverse=True)
+
 
 # ---------------- MAIN ---------------- #
 
