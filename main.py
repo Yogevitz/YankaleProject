@@ -1437,7 +1437,7 @@ class Searcher:
             term_docs = ast.literal_eval((term_post_line.split('~')[2])[:-1])
             # Keep the term with and his frequencies in each doc
             self.query_terms[term] = term_docs
-            # Keep all docs that contain terms from the query
+            # Keep all docs that contain terms from the query .
             self.docs_containing_current_terms.update(term_docs.keys())
 
 
