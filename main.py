@@ -7,6 +7,7 @@
 # from multiprocessing import Process
 # from multiprocessing.sharedctypes import synchronized
 import json
+import operator
 import os
 import time
 import requests
@@ -211,10 +212,10 @@ class GUI:
             shutil.move(final_merged_file_path, root_folder_path)
             shutil.move(root_folder_path + '/' + final_merged_file_path, save_path)
 
-            if os.path.exists(save_path + '/' + 'posting%s.txt' % ending):
-                os.remove(save_path + '/' + 'posting%s.txt' % ending)
+            if os.path.exists(save_path + '/posting%s.txt' % ending):
+                os.remove(save_path + '/posting%s.txt' % ending)
 
-            os.rename(save_path + '/' + final_merged_file_path, save_path + '/' + 'posting%s.txt' % ending)
+            os.rename(save_path + '/' + final_merged_file_path, save_path + '/posting%s.txt' % ending)
 
             erase_index = 0
 
@@ -260,6 +261,7 @@ class GUI:
             runtime_label = Label(finish_window, text=("Total Runtime (seconds): %s" % total_runtime))
             num_of_docs_label.grid(row=0, column=1)
             num_of_terms_label.grid(row=1, column=1)
+            runtime_label.grid(row=2, column=1)
 
     def start_search(self):
         if self.entry_Queries_Path.get() == '' and self.entry_Query.get() == '':
@@ -271,6 +273,7 @@ class GUI:
             position_right = int(root.winfo_screenwidth() / 2 - window_width / 2)
             position_down = int(root.winfo_screenheight() / 2 - window_height / 2)
             search_results_window.geometry("500x500+{}+{}".format(position_right, position_down))
+            ranker = 0
 
             if self.entry_Query.get() != '':
                 q = str(self.entry_Query.get())
@@ -296,10 +299,12 @@ class GUI:
             vsb.pack(side="right", fill="y")
             text.pack(side="left", fill="both", expand=True)
 
-            for i in range(1, 51):
+            rank_range = min(50, len(ranker.docs_ranks)) + 1
+            for i in range(1, rank_range):
                 doc_index = Label(search_results_window, text="%d." % i)
-                doc_button = Button(search_results_window, text="doc #%s" % ranker.docs_ranks.get(i - 1),
-                                    command=lambda: self.doc_entities(ranker.docs_ranks.get(i - 1)))
+                doc_name = ranker.docs_ranks[i - 1][0]
+                doc_button = Button(search_results_window, text=doc_name,
+                                    command=lambda: self.doc_entities(doc_name))
                 text.window_create("end", window=doc_index)
                 text.window_create("end", window=doc_button)
                 text.insert("end", "\n")
@@ -434,7 +439,8 @@ class GUI:
         self.status_text_string.set("Waiting for query...")
         self.text_status.config(fg="Blue")
 
-    def doc_entities(self, doc_name):
+    @staticmethod
+    def doc_entities(doc_name):
         text_window = Toplevel(root)
         window_width = 200
         window_height = 300
@@ -443,7 +449,6 @@ class GUI:
         text_window.geometry("200x300+{}+{}".format(position_right, position_down))
         exit_button = Button(text_window, text="Exit", command=lambda: text_window.destroy())
         exit_button.pack()
-
 
 
 class ReadFile:
@@ -1411,31 +1416,39 @@ class Searcher:
 
     # 'I love white chocolate'
     query = ''
+
     # {'I':                        , 'love':             ...
     #       {'doc1': 5, 'doc2': 4}           {'doc2': 3} ...
     query_terms = {}
+
     # {'doc1', 'doc2', 'doc3', ...}
     docs_containing_current_terms = {}
 
     def __init__(self, q):
         self.query = q
-        self.query_terms.update(q.split(' '))
+        self.query_terms = {}
+        for qi in q.split(' '):
+            self.query_terms[qi] = {}
 
     def find_docs_containing_current_terms(self):
         global main_dictionary
         global docs_dictionary
         global g
+        docs_containing_current_terms = {}
         for term in self.query_terms.keys():
+            if term not in main_dictionary.keys():
+                continue
             # Get the index of the term in the posting
-            term_post_index = main_dictionary[term]['post_index']
+            term_post_index = int(main_dictionary[term]['post_index']) + 1
             # Get the term line in the posting file
-            term_post_line = linecache.getline(g.entry_Save_Path.get() + "/postings.txt", term_post_index)
+            term_post_line = linecache.getline(g.entry_Save_Path.get() + "/posting.txt", term_post_index)
             # Get the term docs from the posting
-            term_docs = ast.literal_eval((term_post_line.split('~')[2])[:-1])
+            term_docs = ast.literal_eval((term_post_line.split('~')[2])[:-2])
             # Keep the term with and his frequencies in each doc
             self.query_terms[term] = term_docs
-            # Keep all docs that contain terms from the query .
-            self.docs_containing_current_terms.update(term_docs.keys())
+            # Keep all docs that contain terms from the query
+            for term_doc in term_docs.keys():
+                self.docs_containing_current_terms[term_doc] = ''
 
 
 class Ranker:
@@ -1454,18 +1467,18 @@ class Ranker:
         global avgdl
         global number_of_docs
         for doc in self.docs_ranks.keys():
-            score = 0
+            score = 0.0
             # Calculate the document score based on BM25
             for term in self.query_terms.keys():
                 term_idf = main_dictionary[term]['tf']
                 term_doc_tf = self.query_terms[term][doc]
                 len_of_doc = docs_dictionary[doc]['doc_length']
-                score += (term_idf *
-                          ((term_doc_tf * (self.k1 + 1)) /
-                           (term_doc_tf + (self.k1 * (1 - self.b +
-                                                      (self.b * len_of_doc / avgdl))))))
+                score += (float(term_idf) *
+                          ((float(term_doc_tf) * (self.k1 + 1)) /
+                           (float(term_doc_tf) + (self.k1 * (1 - self.b +
+                                                      (self.b * float(len_of_doc) / float(avgdl)))))))
             self.docs_ranks[doc] = score
-        self.docs_ranks = sorted(self.docs_ranks.items(), key=ast.operator.itemgetter(1), reverse=True)
+        self.docs_ranks = sorted(self.docs_ranks.items(), key=operator.itemgetter(1), reverse=True)
 
 
 # ---------------- MAIN ---------------- #
@@ -1495,6 +1508,9 @@ class Ranker:
 if __name__ == '__main__':
 
     # print('START')
+
+    a = 'fjklsad'
+    print(a.split(' '))
 
     main_index = Index()
     main_dictionary = {}
