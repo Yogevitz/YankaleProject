@@ -262,44 +262,52 @@ class GUI:
             num_of_terms_label.grid(row=1, column=1)
 
     def start_search(self):
-        search_results_window = Toplevel(root)
-        window_width = 400
-        window_height = 500
-        position_right = int(root.winfo_screenwidth() / 2 - window_width / 2)
-        position_down = int(root.winfo_screenheight() / 2 - window_height / 2)
-        search_results_window.geometry("500x500+{}+{}".format(position_right, position_down))
+        if self.entry_Queries_Path.get() == '' or self.entry_Query.get() == '':
+            tkinter.messagebox.showerror("Error", "Please fill Query or Queries Path")
+        else:
+            search_results_window = Toplevel(root)
+            window_width = 400
+            window_height = 500
+            position_right = int(root.winfo_screenwidth() / 2 - window_width / 2)
+            position_down = int(root.winfo_screenheight() / 2 - window_height / 2)
+            search_results_window.geometry("500x500+{}+{}".format(position_right, position_down))
 
-        frame1 = Frame(search_results_window)
-        frame1.pack()
+            if self.entry_Query.get() != '':
+                q = str(self.entry_Query.get())
+                searcher = Searcher(q)
+                searcher.find_docs_containing_current_terms()
+                ranker = Ranker(searcher.docs_containing_current_terms, searcher.query_terms)
+                ranker.rank()
 
-        results_save_button = Button(frame1, text="Save Results")
-        results_save_button.pack(side="top")
+            else:
+                pass
+            frame1 = Frame(search_results_window)
+            frame1.pack()
 
-        frame2 = Frame(search_results_window)
-        frame2.pack()
+            results_save_button = Button(frame1, text="Save Results")
+            results_save_button.pack(side="top")
 
-        vsb = Scrollbar(search_results_window, orient="vertical")
-        text = Text(search_results_window, width=40, height=20, yscrollcommand=vsb.set)
-        vsb.config(command=text.yview)
-        vsb.pack(side="right", fill="y")
-        text.pack(side="left", fill="both", expand=True)
+            frame2 = Frame(search_results_window)
+            frame2.pack()
 
-        for i in range(1, 51):
-            doc_index = Label(search_results_window, text="%d." % i)
-            doc_button = Button(search_results_window, text="doc #%s" % i,
-                                command=lambda: self.open_doc(i))
-            text.window_create("end", window=doc_index)
-            text.window_create("end", window=doc_button)
-            text.insert("end", "\n")
+            vsb = Scrollbar(search_results_window, orient="vertical")
+            text = Text(search_results_window, width=40, height=20, yscrollcommand=vsb.set)
+            vsb.config(command=text.yview)
+            vsb.pack(side="right", fill="y")
+            text.pack(side="left", fill="both", expand=True)
 
-        frame3 = Frame(search_results_window)
-        frame3.pack()
+            for i in range(1, 51):
+                doc_index = Label(search_results_window, text="%d." % i)
+                doc_button = Button(search_results_window, text="doc #%s" % ranker.docs_ranks.get(i - 1),
+                                    command=lambda: self.doc_entities(ranker.docs_ranks.get(i - 1)))
+                text.window_create("end", window=doc_index)
+                text.window_create("end", window=doc_button)
+                text.insert("end", "\n")
+
+            frame3 = Frame(search_results_window)
+            frame3.pack()
 
         pass
-
-    @staticmethod
-    def choose_doc(x):
-        print(x)
 
     def browse_save_file(self):
         if len(self.entry_Save_Path.get()) > 0:
@@ -405,11 +413,14 @@ class GUI:
         window_height = 300
         position_right = int(city_window.winfo_screenwidth() / 2 - window_width / 2)
         position_down = int(city_window.winfo_screenheight() / 2 - window_height / 2)
+        city_window.title("this is city window!")
         city_window.geometry("200x300+{}+{}".format(position_right, position_down))
         self.status_text_string.set("Working on cities...")
         self.text_status.config(fg="Red")
         ok_button = Button(city_window, text="Save", width="8", command=lambda: self.close_city_window(city_window))
         ok_button.pack()
+        city_label = Label(city_window, text="Cities:")
+        city_label.pack()
         scroll = Scrollbar(city_window, orient="vertical")
         scroll.pack(side=RIGHT, fill=Y)
         city_list = Text(city_window, width=30, height=17, yscrollcommand=scroll.set)
@@ -426,29 +437,17 @@ class GUI:
         self.status_text_string.set("Waiting for query...")
         self.text_status.config(fg="Blue")
 
-    def open_doc(self, doc_number):
+    def doc_entities(self, doc_name):
         text_window = Toplevel(root)
         window_width = 200
         window_height = 300
         position_right = int(text_window.winfo_screenwidth() / 2 - window_width / 2)
         position_down = int(text_window.winfo_screenheight() / 2 - window_height / 2)
-        text_window.title("this is text window!")
+        text_window.title("this is entity window!")
         text_window.geometry("200x300+{}+{}".format(position_right, position_down))
         exit_button = Button(text_window, text="Exit", command=lambda: text_window.destroy())
         exit_button.pack()
-        entity_button = Button(text_window, text="Entity", command=lambda: self.get_entity())
-        entity_button.pack()
-        text_label = Label(text_window, text="Text:")
-        text_label.pack()
-        scroll = Scrollbar(text_window, orient="vertical")
-        scroll.pack(side=RIGHT, fill=Y)
-        text_doc = Text(text_window, width=30, height=15, yscrollcommand=scroll.set)
-        text_doc.pack(side=LEFT)
-        scroll.config(command=text_doc.yview)
-        text_doc.insert("docnumber.text")
 
-    def get_entity(self):
-        pass
 
 
 class ReadFile:
@@ -1410,14 +1409,9 @@ class Index:
         index_dictionary_file.write('@@@')
 
 
-# Both Docs and Terms dictionaries are loaded (global)
 class Searcher:
-    # 'I love white chocolate'
     query = ''
-    # {'I':                        , 'love':             ...
-    #       {'doc1': 5, 'doc2': 4}           {'doc2': 3} ...
     query_terms = {}
-    # {'doc1', 'doc2', 'doc3', ...}
     docs_containing_current_terms = {}
 
     def __init__(self, q):
@@ -1448,7 +1442,8 @@ class Ranker:
     b = 0.75
 
     def __init__(self, docs, terms):
-        self.docs_ranks = docs
+        self.docs_ranks = {}
+        self.docs_ranks.update(docs.keys())
         self.query_terms = terms
 
     def rank(self):
@@ -1468,8 +1463,7 @@ class Ranker:
                            (term_doc_tf + (self.k1 * (1 - self.b +
                                                       (self.b * len_of_doc / avgdl))))))
             self.docs_ranks[doc] = score
-        self.docs_ranks = sorted(self.docs_ranks.items(), key=ast.operator.itemgetter(1), reverse=True)
-
+        self.docs_ranks = sorted(self.docs_ranks.items(), key=ast.operator.itemgettre(1), reverse=True)
 
 # ---------------- MAIN ---------------- #
 
