@@ -278,6 +278,7 @@ class GUI:
             if self.entry_Query.get() != '':
                 q = str(self.entry_Query.get())
                 searcher = Searcher(q)
+                searcher.docs_containing_current_terms.clear()
                 searcher.find_docs_containing_current_terms()
                 ranker = Ranker(searcher.docs_containing_current_terms, searcher.query_terms)
                 ranker.rank()
@@ -311,7 +312,6 @@ class GUI:
 
             frame3 = Frame(search_results_window)
             frame3.pack()
-
         pass
 
     def browse_save_file(self):
@@ -1429,12 +1429,15 @@ class Searcher:
         self.query_terms = {}
         for qi in q.split(' '):
             self.query_terms[qi] = {}
+        docs_containing_current_terms = {}
+        docs_containing_current_terms.clear()
 
     def find_docs_containing_current_terms(self):
         global main_dictionary
         global docs_dictionary
         global g
         docs_containing_current_terms = {}
+        docs_containing_current_terms.clear()
         for term in self.query_terms.keys():
             if term not in main_dictionary.keys():
                 continue
@@ -1476,7 +1479,7 @@ class Ranker:
                 score += (float(term_idf) *
                           ((float(term_doc_tf) * (self.k1 + 1)) /
                            (float(term_doc_tf) + (self.k1 * (1 - self.b +
-                                                      (self.b * float(len_of_doc) / float(avgdl)))))))
+                                                             (self.b * float(len_of_doc) / float(avgdl)))))))
             self.docs_ranks[doc] = score
         self.docs_ranks = sorted(self.docs_ranks.items(), key=operator.itemgetter(1), reverse=True)
 
