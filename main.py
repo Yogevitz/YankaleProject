@@ -141,8 +141,8 @@ class GUI:
             for language in sorted(read_file.language_dictionary):
                 self.language_list.insert(END, language)
 
-            for city in sorted(read_file.cities):
-                self.list_cities.add(city)
+            # for city in sorted(read_file.cities):
+            #     self.list_cities.add(city)
 
             main_index.set_stemming_bool(stemming_bool)
 
@@ -413,6 +413,17 @@ class GUI:
             self.text_status.config(fg="Blue")
 
     def city_filter(self):
+        if not os.path.exists(self.entry_Save_Path.get() + '/cities_index.txt'):
+            tkinter.messagebox.showerror("Error", "There is no cities dictionary in the specified Save Path")
+        else:
+            self.status_text_string.set("Loading...")
+            self.text_status.config(fg="Red")
+            loaded_file = open(self.entry_Save_Path.get() + '/cities_index.txt', 'r').readlines()
+            for line in loaded_file:
+                if not line == '':
+                    line_split = line.split('~')
+                    city = line_split[0]
+                    self.list_cities.add(city[1:len(city)])
         city_window = Toplevel(root)
         window_width = 200
         window_height = 300
@@ -421,23 +432,41 @@ class GUI:
         city_window.geometry("200x300+{}+{}".format(position_right, position_down))
         self.status_text_string.set("Working on cities...")
         self.text_status.config(fg="Red")
-        ok_button = Button(city_window, text="Save", width="8", command=lambda: self.close_city_window(city_window))
+        ok_button = Button(city_window, text="Save", width="8", command=lambda: self.close_city_window(city_window,
+                                                                                                       checkboxes))
         ok_button.pack()
         scroll = Scrollbar(city_window, orient="vertical")
         scroll.pack(side=RIGHT, fill=Y)
         city_list = Text(city_window, width=30, height=17, yscrollcommand=scroll.set)
+        checkboxes = {}
+        checkbox_list = []
+        checkbox_var_list = []
         city_list.pack(side=LEFT)
         scroll.config(command=city_list.yview)
 
         for city in sorted(self.list_cities):
-            cb = Checkbutton(city_window, text="%s" % city)
+            var_city = IntVar()
+            cb = Checkbutton(city_window, text="%s" % city, variable=var_city, name=city.lower())
+            checkboxes[city] = var_city
+            checkbox_list.append(cb)
+            checkbox_var_list.append(var_city)
             city_list.window_create("end", window=cb)
             city_list.insert("end", "\n")
 
-    def close_city_window(self, city_window):
-        city_window.destroy()
+    def close_city_window(self, city_window, checkboxes):
+        city_dictionary = {}
+        city_selected = False
+
+        for city in sorted(self.list_cities):
+            if checkboxes[city].get() == 1:
+                city_selected = True
+                city_dictionary[city] = 1
+        if not city_selected:
+            for city in sorted(self.list_cities):
+                city_dictionary[city] = 1
         self.status_text_string.set("Waiting for query...")
         self.text_status.config(fg="Blue")
+        city_window.destroy()
 
     @staticmethod
     def doc_entities(doc_name):
