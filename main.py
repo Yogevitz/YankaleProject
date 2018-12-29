@@ -553,7 +553,7 @@ class GUI:
         ending = ''
         if self.entry_Stemming_Bool:
             ending = '_with_stemming'
-        queries_file_name = open(self.entry_Save_Path.get() + 'queries_results' + ending + '.txt', "ab")
+        queries_file_name = open(self.entry_Save_Path.get() + '/queries_results' + ending + '.txt', "ab")
         queries_file_name.write("query ID:" + query_number + '/n')
         for doc_name in docs:
             queries_file_name.write(doc_name + '/n')
