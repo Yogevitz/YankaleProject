@@ -36,6 +36,8 @@ class GUI:
     global total_length_of_docs
     global avgdl
 
+    number_of_individual_queries = 0
+
     def __init__(self, root):
         self.topFrame = Frame(root)
         window_width = 300
@@ -98,6 +100,8 @@ class GUI:
         self.status_text_string.set("Ready to start")
         self.text_status_label.grid(row=13, column=0)
         self.text_status.grid(row=13, column=1)
+
+        self.city_into_query = ""
 
     # need to add the paths and the errors
     def start_work(self):
@@ -264,7 +268,8 @@ class GUI:
             runtime_label.grid(row=2, column=1)
 
     def start_search(self):
-        if self.entry_Queries_Path.get() == '' and self.entry_Query.get() == '':
+
+        if self.entry_Queries_Path.get() == '' and self.entry_Query.get() == '' and self.city_into_query == '':
             tkinter.messagebox.showerror("Error", "Please fill Query or Queries Path")
         else:
             search_results_window = Toplevel(root)
@@ -275,40 +280,97 @@ class GUI:
             search_results_window.geometry("500x500+{}+{}".format(position_right, position_down))
             ranker = 0
 
-            if self.entry_Query.get() != '':
-                q = str(self.entry_Query.get())
-                searcher = Searcher(q)
+            # init the stemming and the stop words path
+            stop_words_path = self.entry_Resources_Path.get() + '/stop_words.txt'
+            stemming_bool = self.entry_Stemming_Bool.get()
+
+            # one query from the entry query
+            if self.entry_Query.get() != '' or (self.city_into_query != '' and self.entry_Query.get() == ''):
+                self.number_of_individual_queries += 1
+                q = str(self.entry_Query.get()) + " " + str(self.city_into_query)
+                query_after_parsing = []
+                query_tokens = []
+                # //////////////////////////////////////////
+                # check if we need to fill the entries again
+                # //////////////////////////////////////////
+
+                parser = Parse(0, stop_words_path, stemming_bool, "")
+                query_tokens = parser.get_tokens(q)
+                query_after_parsing = parser.parse_document("only_one_query", query_tokens)
+                new_qeury_after_parsing = " ".join(query_after_parsing)
+                searcher = Searcher(new_qeury_after_parsing)
                 searcher.docs_containing_current_terms.clear()
                 searcher.find_docs_containing_current_terms()
                 ranker = Ranker(searcher.docs_containing_current_terms, searcher.query_terms)
                 ranker.rank()
 
+                frame1 = Frame(search_results_window)
+                frame1.pack()
+
+                results_save_button = Button(frame1, text="Save Results",
+                                             command=lambda: self.save_query_results("query_number %d" % self.number_of_individual_queries, ranker.docs_ranks))
+                results_save_button.pack(side="top")
+
+                frame2 = Frame(search_results_window)
+                frame2.pack()
+
+                vsb = Scrollbar(search_results_window, orient="vertical")
+                text = Text(search_results_window, width=40, height=20, yscrollcommand=vsb.set)
+                vsb.config(command=text.yview)
+                vsb.pack(side="right", fill="y")
+                text.pack(side="left", fill="both", expand=True)
+
+                rank_range = min(50, len(ranker.docs_ranks)) + 1
+                for i in range(1, rank_range):
+                    doc_index = Label(search_results_window, text="%d." % i)
+                    doc_name = ranker.docs_ranks[i - 1][0]
+                    doc_button = Button(search_results_window, text=doc_name,
+                                        command=lambda: self.doc_entities(doc_name))
+                    text.window_create("end", window=doc_index)
+                    text.window_create("end", window=doc_button)
+                    text.insert("end", "\n")
+
+            # many queries from queries doc
             else:
-                pass
-            frame1 = Frame(search_results_window)
-            frame1.pack()
+                queries = self.get_queries_from_doc()
+                for query_number in queries:
+                    q = queries[query_number]['query_text']
+                    parser = Parse(0, stop_words_path, stemming_bool, "")
+                    query_tokens = parser.get_tokens(q)
+                    query_doc_name = "query " + query_number
+                    query_after_parsing = parser.parse_document(query_doc_name, query_tokens)
+                    new_qeury_after_parsing = " ".join(query_after_parsing)
+                    searcher = Searcher(new_qeury_after_parsing)
+                    searcher.docs_containing_current_terms.clear()
+                    searcher.find_docs_containing_current_terms()
+                    ranker = Ranker(searcher.docs_containing_current_terms, searcher.query_terms)
+                    ranker.rank()
 
-            results_save_button = Button(frame1, text="Save Results")
-            results_save_button.pack(side="top")
+                    frame1 = Frame(search_results_window)
+                    frame1.pack()
 
-            frame2 = Frame(search_results_window)
-            frame2.pack()
+                    results_save_button = Button(frame1, text="Save Results",
+                                                 command=lambda: self.save_query_results(query_number, ranker.docs_ranks))
+                    results_save_button.pack(side="top")
 
-            vsb = Scrollbar(search_results_window, orient="vertical")
-            text = Text(search_results_window, width=40, height=20, yscrollcommand=vsb.set)
-            vsb.config(command=text.yview)
-            vsb.pack(side="right", fill="y")
-            text.pack(side="left", fill="both", expand=True)
+                    frame2 = Frame(search_results_window)
+                    frame2.pack()
 
-            rank_range = min(50, len(ranker.docs_ranks)) + 1
-            for i in range(1, rank_range):
-                doc_index = Label(search_results_window, text="%d." % i)
-                doc_name = ranker.docs_ranks[i - 1][0]
-                doc_button = Button(search_results_window, text=doc_name,
-                                    command=lambda: self.doc_entities(doc_name))
-                text.window_create("end", window=doc_index)
-                text.window_create("end", window=doc_button)
-                text.insert("end", "\n")
+                    vsb = Scrollbar(search_results_window, orient="vertical")
+                    text = Text(search_results_window, width=40, height=20, yscrollcommand=vsb.set)
+                    vsb.config(command=text.yview)
+                    vsb.pack(side="right", fill="y")
+                    text.pack(side="left", fill="both", expand=True)
+
+                    rank_range = min(50, len(ranker.docs_ranks)) + 1
+                    for i in range(1, rank_range):
+                        doc_index = Label(search_results_window, text="%d." % i)
+                        doc_name = ranker.docs_ranks[i - 1][0]
+                        doc_button = Button(search_results_window, text=doc_name,
+                                            command=lambda: self.doc_entities(doc_name))
+                        text.window_create("end", window=doc_index)
+                        text.window_create("end", window=doc_button)
+                        text.insert("end", "\n")
 
             frame3 = Frame(search_results_window)
             frame3.pack()
@@ -424,36 +486,37 @@ class GUI:
                     line_split = line.split('~')
                     city = line_split[0]
                     self.list_cities.add(city[1:len(city)])
-        city_window = Toplevel(root)
-        window_width = 200
-        window_height = 300
-        position_right = int(city_window.winfo_screenwidth() / 2 - window_width / 2)
-        position_down = int(city_window.winfo_screenheight() / 2 - window_height / 2)
-        city_window.geometry("200x300+{}+{}".format(position_right, position_down))
-        self.status_text_string.set("Working on cities...")
-        self.text_status.config(fg="Red")
-        ok_button = Button(city_window, text="Save", width="8", command=lambda: self.close_city_window(city_window,
-                                                                                                       checkboxes))
-        ok_button.pack()
-        scroll = Scrollbar(city_window, orient="vertical")
-        scroll.pack(side=RIGHT, fill=Y)
-        city_list = Text(city_window, width=30, height=17, yscrollcommand=scroll.set)
-        checkboxes = {}
-        checkbox_list = []
-        checkbox_var_list = []
-        city_list.pack(side=LEFT)
-        scroll.config(command=city_list.yview)
+            city_window = Toplevel(root)
+            window_width = 200
+            window_height = 300
+            position_right = int(city_window.winfo_screenwidth() / 2 - window_width / 2)
+            position_down = int(city_window.winfo_screenheight() / 2 - window_height / 2)
+            city_window.geometry("200x300+{}+{}".format(position_right, position_down))
+            self.status_text_string.set("Working on cities...")
+            self.text_status.config(fg="Red")
+            ok_button = Button(city_window, text="Save", width="8", command=lambda: self.close_city_window(city_window,
+                                                                                                           checkboxes))
+            ok_button.pack()
+            scroll = Scrollbar(city_window, orient="vertical")
+            scroll.pack(side=RIGHT, fill=Y)
+            city_list = Text(city_window, width=30, height=17, yscrollcommand=scroll.set)
+            checkboxes = {}
+            checkbox_list = []
+            checkbox_var_list = []
+            city_list.pack(side=LEFT)
+            scroll.config(command=city_list.yview)
 
-        for city in sorted(self.list_cities):
-            var_city = IntVar()
-            cb = Checkbutton(city_window, text="%s" % city, variable=var_city, name=city.lower())
-            checkboxes[city] = var_city
-            checkbox_list.append(cb)
-            checkbox_var_list.append(var_city)
-            city_list.window_create("end", window=cb)
-            city_list.insert("end", "\n")
+            for city in sorted(self.list_cities):
+                var_city = IntVar()
+                cb = Checkbutton(city_window, text="%s" % city, variable=var_city, name=city.lower())
+                checkboxes[city] = var_city
+                checkbox_list.append(cb)
+                checkbox_var_list.append(var_city)
+                city_list.window_create("end", window=cb)
+                city_list.insert("end", "\n")
 
     def close_city_window(self, city_window, checkboxes):
+        self.city_into_query
         city_dictionary = {}
         city_selected = False
 
@@ -461,12 +524,40 @@ class GUI:
             if checkboxes[city].get() == 1:
                 city_selected = True
                 city_dictionary[city] = 1
+
+                self.city_into_query += (city + " ")
         if not city_selected:
             for city in sorted(self.list_cities):
                 city_dictionary[city] = 1
         self.status_text_string.set("Waiting for query...")
         self.text_status.config(fg="Blue")
         city_window.destroy()
+
+    # this method return the dictionary that contain the query number and the information of every query
+    def get_queries_from_doc(self):
+        queries_texts = {}
+        queries_file = open(self.entry_Queries_Path.get() + "/queries.txt", "r").read()
+        for query_contents in queries_file.split("</top>")[:-1]:
+            doc_language = ''
+            doc_city = ''
+            doc_text = ''
+            if query_contents != '\n':
+                query_number = query_contents.split('<title>')[0].split('<num>')[1].replace(' ', '').replace('\n', '')
+            if '<desc>' in query_contents:
+                query_text = query_contents.split('Description:')[1].split('<narr>')[0].replace('\n', ' ').replace("?",'')
+            queries_texts[query_number] = {'query_number': query_number, 'query_text': query_text}
+        return queries_texts
+
+    # this method saved all queries results to one file
+    def save_query_results(self, query_number, docs):
+        ending = ''
+        if self.entry_Stemming_Bool:
+            ending = '_with_stemming'
+        queries_file_name = open('queries_results' + ending + '.txt', "ab")
+        queries_file_name.write("query ID:" + query_number + '/n')
+        for doc_name in docs:
+            queries_file_name.write(doc_name + '/n')
+        queries_file_name.write("@@@" + '/n')
 
     @staticmethod
     def doc_entities(doc_name):
@@ -721,6 +812,7 @@ class Parse:
         max_tf = 1
         max_term = ''
         terms_to_add = []
+        terms_to_query = []
 
         while index < len(tokens):
             doc_length += len(terms_to_add)
@@ -752,10 +844,16 @@ class Parse:
                 else:
                     terms_to_add.append(token)
                     index += 1
-
-                (doc_terms, term_index, max_tf, max_term) =\
-                    self.add_to_dictionaries(terms_to_add, doc_terms, doc_name, term_index, max_tf, max_term)
-        return doc_terms, max_tf, max_term, doc_length
+                if not doc_name.__contains__("quer"):
+                    (doc_terms, term_index, max_tf, max_term) =\
+                        self.add_to_dictionaries(terms_to_add, doc_terms, doc_name, term_index, max_tf, max_term)
+                else:
+                    for word in terms_to_add:
+                        terms_to_query.append(word)
+        if doc_name.__contains__("quer"):
+            return terms_to_query
+        else:
+            return doc_terms, max_tf, max_term, doc_length
 
     def add_to_dictionaries(self, terms_to_add, doc_terms, doc_name, term_index, max_tf, max_term):
 
@@ -1261,6 +1359,7 @@ class Parse:
         #   doc_name
         # values:
         #   max_tf of term
+        #   the max term
         #   num of terms
         #   doc_city
         #   doc_length
@@ -1315,6 +1414,7 @@ class Parse:
         #   doc_name
         # values:
         #   max_tf of term                                  number
+        #   term with max_tf                                string
         #   num of terms                                    number
         #   doc_city                                        string
         #   doc_length                                      number
@@ -1540,9 +1640,6 @@ class Ranker:
 if __name__ == '__main__':
 
     # print('START')
-
-    a = 'fjklsad'
-    print(a.split(' '))
 
     main_index = Index()
     main_dictionary = {}
