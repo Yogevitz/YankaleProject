@@ -115,11 +115,10 @@ class GUI:
             # self.entry_Save_Path = ''
 
         else:
-
-            start = time.time()
-
             self.status_text_string.set("Loading, please wait...")
             self.text_status.config(fg="Red")
+
+            start = time.time()
 
             # # print("work on it")
             # if self.entry_Stemming_Bool.get() == 1:
@@ -1623,7 +1622,8 @@ class Searcher:
         self.query = q
         self.query_terms = {}
         for qi in q.split(' '):
-            self.query_terms[qi] = {}
+            self.query_terms[str(qi).upper()] = {}
+            self.query_terms[str(qi).lower()] = {}
         docs_containing_current_terms = {}
         docs_containing_current_terms.clear()
 
