@@ -120,8 +120,7 @@ class GUI:
 
             self.status_text_string.set("Loading, please wait...")
             self.text_status.config(fg="Red")
-            tkinter.messagebox.showinfo("Working", "The search engine is working on your request."
-                                                   "\nPlease click OK and wait...")
+
             # # print("work on it")
             # if self.entry_Stemming_Bool.get() == 1:
             #     print("with stemmer")
@@ -213,13 +212,21 @@ class GUI:
 
             main_index.build_index_dictionary(save_path, final_merged_file_path)
 
-            shutil.move(final_merged_file_path, root_folder_path)
-            shutil.move(root_folder_path + '/' + final_merged_file_path, save_path)
-
             if os.path.exists(save_path + '/posting%s.txt' % ending):
                 os.remove(save_path + '/posting%s.txt' % ending)
+            os.rename(final_merged_file_path, 'posting%s.txt' % ending)
+            shutil.move('posting%s.txt' % ending, save_path)
 
-            os.rename(save_path + '/' + final_merged_file_path, save_path + '/posting%s.txt' % ending)
+            # os.rename(save_path + '/' + final_merged_file_path, save_path + '/posting%s.txt' % ending)
+            # shutil.move(final_merged_file_path, root_folder_path)
+            # shutil.move(root_folder_path + '/' + final_merged_file_path, save_path)
+
+            if os.path.exists(save_path + '/parser_docs%s.txt' % ending):
+                os.remove(save_path + '/parser_docs%s.txt' % ending)
+            shutil.move('parser_docs%s.txt' % ending, save_path)
+
+            # if os.path.exists(save_path + '/posting%s.txt' % ending):
+            #     os.remove(save_path + '/posting%s.txt' % ending)
 
             erase_index = 0
 
@@ -268,16 +275,16 @@ class GUI:
             runtime_label.grid(row=2, column=1)
 
     def start_search(self):
-
+        global docs_dictionary
         if self.entry_Queries_Path.get() == '' and self.entry_Query.get() == '' and self.city_into_query == '':
             tkinter.messagebox.showerror("Error", "Please fill Query or Queries Path")
         else:
             search_results_window = Toplevel(root)
-            window_width = 400
+            window_width = 250
             window_height = 500
             position_right = int(root.winfo_screenwidth() / 2 - window_width / 2)
             position_down = int(root.winfo_screenheight() / 2 - window_height / 2)
-            search_results_window.geometry("500x500+{}+{}".format(position_right, position_down))
+            search_results_window.geometry("250x500+{}+{}".format(position_right, position_down))
             ranker = 0
 
             # init the stemming and the stop words path
@@ -308,7 +315,9 @@ class GUI:
                 frame1.pack()
 
                 results_save_button = Button(frame1, text="Save Results",
-                                             command=lambda: self.save_query_results("%d" % self.number_of_individual_queries, ranker.docs_ranks))
+                                             command=lambda: self.save_query_results
+                                             ("%d" % self.number_of_individual_queries,
+                                              ranker.docs_ranks))
                 results_save_button.pack(side="top")
 
                 frame2 = Frame(search_results_window)
@@ -325,7 +334,7 @@ class GUI:
                     doc_index = Label(search_results_window, text="%d." % i)
                     doc_name = ranker.docs_ranks[i - 1][0]
                     doc_button = Button(search_results_window, text=doc_name,
-                                        command=lambda: self.doc_entities(doc_name))
+                                        command=lambda doc_name=doc_name: self.doc_entities(doc_name))
                     text.window_create("end", window=doc_index)
                     text.window_create("end", window=doc_button)
                     text.insert("end", "\n")
@@ -367,14 +376,13 @@ class GUI:
                         doc_index = Label(search_results_window, text="%d." % i)
                         doc_name = ranker.docs_ranks[i - 1][0]
                         doc_button = Button(search_results_window, text=doc_name,
-                                            command=lambda: self.doc_entities(doc_name))
+                                            command=lambda doc_name=doc_name: self.doc_entities(doc_name))
                         text.window_create("end", window=doc_index)
                         text.window_create("end", window=doc_button)
                         text.insert("end", "\n")
 
             frame3 = Frame(search_results_window)
             frame3.pack()
-        pass
 
     def browse_save_file(self):
         if len(self.entry_Save_Path.get()) > 0:
@@ -453,6 +461,8 @@ class GUI:
     def load_dictionary(self):
         # print("Load Dictionary")
         global main_dictionary
+        global docs_dictionary
+        global avgdl
         ending = ''
         if self.entry_Stemming_Bool.get():
             ending = '_with_stemming'
@@ -470,7 +480,32 @@ class GUI:
                     term_index = line_split[1]
                     term_tf = line_split[2]
                     main_dictionary[term] = {'post_index': term_index,
-                                                        'tf': term_tf}
+                                             'tf': term_tf}
+            if os.path.exists(self.entry_Save_Path.get() + '/parser_docs.txt'):
+                docs_dictionary = {}
+                doc_len_sum = 0
+                doc_count = 0
+                loaded_file = open(self.entry_Save_Path.get() + '/parser_docs.txt', 'r').readlines()
+                for line in loaded_file:
+                    if not line.__contains__('@'):
+                        line = line.replace('<', '').replace('>', '')
+                        line_split = line.split('~')
+                        doc = line_split[0]
+                        max_tf = line_split[1]
+                        max_term = line_split[2]
+                        num_of_terms = line_split[3]
+                        doc_city = line_split[4]
+                        doc_length = line_split[5]
+                        doc_entities = line_split[6]
+                        docs_dictionary[doc] = {'max_tf': max_tf,
+                                                'max_term': max_term,
+                                                'num_of_terms': num_of_terms,
+                                                'doc_city': doc_city,
+                                                'doc_length': doc_length,
+                                                'entities': doc_entities}
+                        doc_len_sum += int(doc_length)
+                        doc_count += 1
+                avgdl = float(doc_len_sum) / doc_count
             self.status_text_string.set("Dictionary Loaded!")
             self.text_status.config(fg="Blue")
 
@@ -560,17 +595,28 @@ class GUI:
         for doc_name in docs:
             queries_file_name.write(query_id + " 0 " + doc_name + ' ' + str(i) + ' ' + str(float_number) + 'test\n')
             i += 1
+        tkinter.messagebox.showinfo("Done", "Query results saved!")
 
     @staticmethod
     def doc_entities(doc_name):
+        global docs_dictionary
         text_window = Toplevel(root)
         window_width = 200
-        window_height = 300
+        window_height = 200
         position_right = int(text_window.winfo_screenwidth() / 2 - window_width / 2)
         position_down = int(text_window.winfo_screenheight() / 2 - window_height / 2)
-        text_window.geometry("200x300+{}+{}".format(position_right, position_down))
+        text_window.geometry("200x200+{}+{}".format(position_right, position_down))
         exit_button = Button(text_window, text="Exit", command=lambda: text_window.destroy())
         exit_button.pack()
+        doc_label = Label(text_window, text=("Doc Name: " + doc_name))
+        doc_label.pack(side="top", fill="both")
+        entities_label = Label(text_window, text='Top 5 Entities:')
+        entities_label.pack(side="top", fill="both")
+        entities = docs_dictionary[doc_name]['entities'].split(',')
+        for i in range(len(entities)):
+            label_text = str(i + 1) + ". " + (str(entities[i]).replace('\'', '').replace('[', '').replace(']', ''))
+            label_entity = Label(text_window, text=label_text)
+            label_entity.pack(side="top", fill="both")
 
 
 class ReadFile:
@@ -586,7 +632,7 @@ class ReadFile:
     cities_properties = {}
 
     def __init__(self, folder_path):
-        self.resources_path = folder_path + '/test/'
+        self.resources_path = folder_path + '/corpus/'
         self.file_names = os.listdir(self.resources_path)
         self.file_names_split = []
         indexes = range(0, self.file_names.__len__(), min(self.file_names.__len__(),
@@ -787,7 +833,7 @@ class Parse:
         self.stem_bool = stem_bool
         self.cities = cities
         global docs_dictionary
-        docs_dictionary = {}
+        # docs_dictionary = {}
 
     def parse(self, docs_texts, docs_properties):
         # print("Start Parsing")
@@ -1111,7 +1157,7 @@ class Parse:
         month_change = ""
         month_position = 0
         pass_over = False
-        # delete thous delimiters
+        # delete those delimiters
         if token[0].isdigit():
             # April 18,September 21
             if index - 1 >= 0 and self.months_names.__contains__(tokens[index - 1]):
@@ -1356,6 +1402,18 @@ class Parse:
             new_terms.append(token)
         return new_terms, index + 1
 
+    @staticmethod
+    def get_doc_entities(doc_terms):
+        i = 0
+        entities = []
+        for term_tuple in sorted(doc_terms.iteritems(), key=lambda (x, y): y['tf'], reverse=True):
+            if term_tuple[0].isupper():
+                entities.append(str(term_tuple[0]) + ": tf = " + str(doc_terms[term_tuple[0]]['tf']))
+                i += 1
+                if i == 5:
+                    return entities
+        return entities
+
     def save_doc_data(self, doc_name, doc_terms, doc_properties, max_tf, max_term, doc_length):
         # id:
         #   doc_name
@@ -1366,11 +1424,15 @@ class Parse:
         #   doc_city
         #   doc_length
         global docs_dictionary
+
+        doc_entities = self.get_doc_entities(doc_terms)
+
         docs_dictionary[doc_name] = {'max_tf': max_tf,
                                      'max_term': max_term,
                                      'num_of_terms': len(doc_terms.keys()),
                                      'doc_city': doc_properties['city'],
-                                     'doc_length': doc_length}
+                                     'doc_length': doc_length,
+                                     'entities': doc_entities}
         for term in doc_terms:
 
             # { city :                                                           }
@@ -1440,8 +1502,10 @@ class Parse:
             str_max_term = str(docs_dictionary[doc]['max_term'])
             str_num_of_terms = str(docs_dictionary[doc]['num_of_terms'])
             str_doc_length = str(docs_dictionary[doc]['doc_length'])
+            str_doc_entities = str(docs_dictionary[doc]['entities'])
             docs_file.write("<" + doc + "~" + str_max_tf + "~" + str_max_term + '~'
-                            + str_num_of_terms + "~" + docs_dictionary[doc]['doc_city'] + "~" + str_doc_length + ">\n")
+                            + str_num_of_terms + "~" + docs_dictionary[doc]['doc_city'] + "~"
+                            + str_doc_length + "~" + str_doc_entities + ">\n")
         docs_file.write("@@@")
         pass
 
