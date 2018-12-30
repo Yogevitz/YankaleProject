@@ -1668,8 +1668,14 @@ class Ranker:
             score = 0.0
             # Calculate the document score based on BM25
             for term in self.query_terms.keys():
-                term_idf = main_dictionary[term]['tf']
-                term_doc_tf = self.query_terms[term][doc]
+                if term in main_dictionary.keys():
+                    term_idf = main_dictionary[term]['tf']
+                else:
+                    term_idf = 0
+                if doc in self.query_terms[term].keys():
+                    term_doc_tf = self.query_terms[term][doc]
+                else:
+                    term_doc_tf = 0
                 len_of_doc = docs_dictionary[doc]['doc_length']
                 score += (float(term_idf) *
                           ((float(term_doc_tf) * (self.k1 + 1)) /
