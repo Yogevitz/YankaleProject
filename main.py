@@ -308,7 +308,7 @@ class GUI:
                 frame1.pack()
 
                 results_save_button = Button(frame1, text="Save Results",
-                                             command=lambda: self.save_query_results("query_number %d" % self.number_of_individual_queries, ranker.docs_ranks))
+                                             command=lambda: self.save_query_results("%d" % self.number_of_individual_queries, ranker.docs_ranks))
                 results_save_button.pack(side="top")
 
                 frame2 = Frame(search_results_window)
@@ -551,13 +551,15 @@ class GUI:
     # this method saved all queries results to one file
     def save_query_results(self, query_number, docs):
         ending = ''
-        if self.entry_Stemming_Bool:
+        if self.entry_Stemming_Bool.get() == 1:
             ending = '_with_stemming'
         queries_file_name = open(self.entry_Save_Path.get() + '/queries_results' + ending + '.txt', "ab")
-        queries_file_name.write("query ID:" + query_number + '/n')
+        query_id = query_number.split(": ")[1]
+        i = 0
+        float_number = 0.0
         for doc_name in docs:
-            queries_file_name.write(doc_name + '/n')
-        queries_file_name.write("@@@" + '/n')
+            queries_file_name.write(query_id + " 0 " + doc_name + ' ' + str(i) + ' ' + str(float_number) + 'test\n')
+            i += 1
 
     @staticmethod
     def doc_entities(doc_name):
