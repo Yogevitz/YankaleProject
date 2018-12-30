@@ -553,7 +553,7 @@ class GUI:
         ending = ''
         if self.entry_Stemming_Bool.get() == 1:
             ending = '_with_stemming'
-        queries_file_name = open(self.entry_Save_Path.get() + '/queries_results' + ending + '.txt', "ab")
+        queries_file_name = open(self.entry_Save_Path.get() + '/results' + ending + '.txt', "ab")
         query_id = query_number.split(": ")[1]
         i = 0
         float_number = 0.0
