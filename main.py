@@ -1705,7 +1705,7 @@ class Ranker:
 
 if __name__ == '__main__':
 
-    # print('START')
+    print('START')
 
     main_index = Index()
     main_dictionary = {}
