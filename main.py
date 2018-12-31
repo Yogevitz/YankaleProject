@@ -468,6 +468,10 @@ class GUI:
             ending = '_with_stemming'
         if not os.path.exists(self.entry_Save_Path.get() + ('/index%s.txt' % ending)):
             tkinter.messagebox.showerror("Error", "There is no dictionary in the specified Save Path")
+        elif not os.path.exists(self.entry_Save_Path.get() + '/parser_docs.txt'):
+            tkinter.messagebox.showerror("Error", "There is no documents dictionary in the specified Save Path")
+        elif not os.path.exists(self.entry_Save_Path.get() + '/languages.txt'):
+            tkinter.messagebox.showerror("Error", "There is no languages dictionary in the specified Save Path")
         else:
             self.status_text_string.set("Loading...")
             self.text_status.config(fg="Red")
