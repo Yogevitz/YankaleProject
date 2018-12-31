@@ -598,11 +598,12 @@ class GUI:
     def save_query_results(self, query_number, docs):
         queries_file_name = open(self.entry_Save_Path.get() + '/results.txt', "ab")
         query_id = query_number.split(": ")[1]
-        i = 0
         float_number = 0.0
-        for doc_name in docs:
+        # sorted(self.docs_ranks.items(), key=operator.itemgetter(1), reverse=True)
+        rank_range = min(50, len(docs)) + 1
+        for i in range(1, rank_range):
+            doc_name = docs[i - 1][0]
             queries_file_name.write(query_id + " 0 " + doc_name + ' ' + str(i) + ' ' + str(float_number) + 'test\n')
-            i += 1
         tkinter.messagebox.showinfo("Done", "Query results saved!")
 
     @staticmethod
