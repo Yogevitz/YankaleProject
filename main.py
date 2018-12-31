@@ -589,8 +589,8 @@ class GUI:
             doc_text = ''
             if query_contents != '\n':
                 query_number = query_contents.split('<title>')[0].split('<num>')[1].replace(' ', '').replace('\n', '')
-            if '<desc>' in query_contents:
-                query_text = query_contents.split('Description:')[1].split('<narr>')[0].replace('\n', ' ').replace("?",'')
+            if '<title>' in query_contents:
+                query_text = query_contents.split('<title>')[1].split('<desc>')[0].replace('\n', ' ')
             queries_texts[query_number] = {'query_number': query_number, 'query_text': query_text}
         return queries_texts
 
