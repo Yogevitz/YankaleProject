@@ -316,7 +316,7 @@ class GUI:
 
                 results_save_button = Button(frame1, text="Save Results",
                                              command=lambda: self.save_query_results
-                                             ("%d" % self.number_of_individual_queries,
+                                             (": %d" % self.number_of_individual_queries,
                                               ranker.docs_ranks))
                 results_save_button.pack(side="top")
 
@@ -506,6 +506,13 @@ class GUI:
                         doc_len_sum += int(doc_length)
                         doc_count += 1
                 avgdl = float(doc_len_sum) / doc_count
+            if os.path.exists(self.entry_Save_Path.get() + '/languages.txt'):
+                self.language_list.delete(0, END)
+                loaded_languages_file = open(self.entry_Save_Path.get() + '/languages.txt', 'r').readlines()
+                for language in loaded_languages_file:
+                    if not language.__contains__(''):
+                        self.language_list.insert(END, language)
+
             self.status_text_string.set("Dictionary Loaded!")
             self.text_status.config(fg="Blue")
 
@@ -730,8 +737,8 @@ class ReadFile:
         language_file_name = 'languages.txt'
         open(save_path + city_file_name, "w")
         city_file = open(save_path + city_file_name, "ab")
-        open(language_file_name, "w")
-        language_file = open(language_file_name, "ab")
+        open(save_path + language_file_name, "w")
+        language_file = open(save_path + language_file_name, "ab")
         open(city_properties_file_name, "w")
         city_properties_file = open(city_properties_file_name, "ab")
 
