@@ -20,6 +20,7 @@ import linecache
 import queue
 import shutil
 import ast
+from tkinter.filedialog import askopenfilename
 
 
 class GUI:
@@ -403,7 +404,7 @@ class GUI:
         if len(self.entry_Queries_Path.get()) > 0:
             self.entry_Queries_Path.delete(0, len(root.queries_folder_name))
         # print("choose a folder")
-        root.queries_folder_name = filedialog.askdirectory()
+        root.queries_folder_name = askopenfilename()
         self.entry_Queries_Path.insert(0, root.queries_folder_name)
         # print(root.queries_folder_name)
 
@@ -570,7 +571,7 @@ class GUI:
     # this method return the dictionary that contain the query number and the information of every query
     def get_queries_from_doc(self):
         queries_texts = {}
-        queries_file = open(self.entry_Queries_Path.get() + "/queries.txt", "r").read()
+        queries_file = open(self.entry_Queries_Path.get(), "r").read()
         for query_contents in queries_file.split("</top>")[:-1]:
             doc_language = ''
             doc_city = ''
@@ -584,10 +585,7 @@ class GUI:
 
     # this method saved all queries results to one file
     def save_query_results(self, query_number, docs):
-        ending = ''
-        if self.entry_Stemming_Bool.get() == 1:
-            ending = '_with_stemming'
-        queries_file_name = open(self.entry_Save_Path.get() + '/results' + ending + '.txt', "ab")
+        queries_file_name = open(self.entry_Save_Path.get() + '/results.txt', "ab")
         query_id = query_number.split(": ")[1]
         i = 0
         float_number = 0.0
