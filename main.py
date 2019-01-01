@@ -115,6 +115,10 @@ class GUI:
         global number_of_docs
         global total_length_of_docs
         global avgdl
+        main_dictionary = {}
+        number_of_docs = 0
+        total_length_of_docs = 0
+        avgdl = 0
         if self.entry_Resources_Path.get() == '' or self.entry_Save_Path.get() == '':
             tkinter.messagebox.showerror("Error", "Please fill in Resources Path and Save Path")
             # self.entry_Resources_Path = ''
@@ -466,6 +470,7 @@ class GUI:
                 self.entry_Save_Path.delete(0, END)
             self.language_list.delete(0, END)
             main_dictionary = {}
+
             if os.path.exists(root.file_save_name + '/posting.txt'):
                 os.remove(root.file_save_name + '/posting.txt')
             if os.path.exists(root.file_save_name + '/posting_with_stemming.txt'):
@@ -494,6 +499,7 @@ class GUI:
             position_down = int(root.winfo_screenheight() / 2 - window_height / 2)
             window.geometry("300x275+{}+{}".format(position_right, position_down))
             index_list = Listbox(window, width=window.winfo_width(), height=window.winfo_height())
+            index_list.delete(0, END)
             index_list.pack(side="left", fill="both", expand=1)
             scrollbar = Scrollbar(window, orient="vertical")
             scrollbar.config(command=index_list.yview)
@@ -608,7 +614,7 @@ class GUI:
                 city_list.insert("end", "\n")
 
     def close_city_window(self, city_window, checkboxes):
-        self.city_into_query
+        self.city_into_query = ""
         city_dictionary = {}
         city_selected = False
 
