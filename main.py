@@ -289,11 +289,13 @@ class GUI:
             tkinter.messagebox.showerror("Error", "Please fill resources path so we can get the stop words")
         else:
             search_results_window = Toplevel(root)
+            save_queries_results_window = Toplevel(root)
             window_width = 250
             window_height = 500
             position_right = int(root.winfo_screenwidth() / 2 - window_width / 2)
             position_down = int(root.winfo_screenheight() / 2 - window_height / 2)
             search_results_window.geometry("250x500+{}+{}".format(position_right, position_down))
+            save_queries_results_window.geometry("150x250+{}+{}".format(position_right, position_down))
             ranker = 0
 
             # init the stemming and the stop words path
@@ -377,6 +379,7 @@ class GUI:
 
             # many queries from queries doc
             else:
+                queris_results_after_all = {}
                 queries = self.get_queries_from_doc()
                 for query_number in queries:
                     q = queries[query_number]['query_text']
@@ -390,34 +393,17 @@ class GUI:
                     searcher.find_docs_containing_current_terms()
                     ranker = Ranker(searcher.docs_containing_current_terms, searcher.query_terms)
                     ranker.rank()
+                    queris_results_after_all[query_number] = []
+                    for doc in ranker.ranked_docs:
+                        queris_results_after_all[query_number].append(doc[0])
 
-                    frame1 = Frame(search_results_window)
-                    frame1.pack()
-
-                    results_save_button = Button(frame1, text="Save Results",
-                                                 command=lambda: self.save_query_results(query_number,
-                                                                                         ranker.ranked_docs))
-                    results_save_button.pack(side="top")
-
-                    frame2 = Frame(search_results_window)
-                    frame2.pack()
-
-                    vsb = Scrollbar(search_results_window, orient="vertical")
-                    text = Text(search_results_window, width=40, height=20, yscrollcommand=vsb.set)
-                    vsb.config(command=text.yview)
-                    vsb.pack(side="right", fill="y")
-                    text.pack(side="left", fill="both", expand=True)
-
-                    i = 1
-                    for doc_tuple in ranker.ranked_docs:
-                        doc_index = Label(search_results_window, text="%d." % i)
-                        i += 1
-                        doc_name = doc_tuple[0]
-                        doc_button = Button(search_results_window, text=doc_name,
-                                            command=lambda doc_name=doc_name: self.doc_entities(doc_name))
-                        text.window_create("end", window=doc_index)
-                        text.window_create("end", window=doc_button)
-                        text.insert("end", "\n")
+                frame1 = Frame(save_queries_results_window)
+                frame1.pack()
+                queries_alert = Label(frame1, text="Please press on the button Save Results")
+                queries_alert.pack(side="top")
+                queries_results_save_button = Button(frame1, text="Save Results",
+                                             command=lambda: self.save_queries_results(queris_results_after_all))
+                queries_results_save_button.pack(side="top")
 
                     # if len(ranker.relevant_docs.keys()) > 0:
                     #     i = 0
@@ -443,9 +429,6 @@ class GUI:
                     #     text.window_create("end", window=doc_index)
                     #     text.window_create("end", window=doc_button)
                     #     text.insert("end", "\n")
-
-            frame3 = Frame(search_results_window)
-            frame3.pack()
 
     def browse_save_file(self):
         if len(self.entry_Save_Path.get()) > 0:
@@ -647,11 +630,8 @@ class GUI:
         queries_texts = {}
         queries_file = open(self.entry_Queries_Path.get(), "r").read()
         for query_contents in queries_file.split("</top>")[:-1]:
-            doc_language = ''
-            doc_city = ''
-            doc_text = ''
             if query_contents != '\n':
-                query_number = query_contents.split('<title>')[0].split('<num>')[1].replace(' ', '').replace('\n', '')
+                query_number = query_contents.split('<title>')[0].split('Number: ')[1].replace(' ', '').replace('\n', '')
             if '<title>' in query_contents:
                 query_text = query_contents.split('<title>')[1].split('<desc>')[0].replace('\n', ' ')
             queries_texts[query_number] = {'query_number': query_number, 'query_text': query_text}
@@ -666,6 +646,14 @@ class GUI:
         for doc in docs:
             queries_file_name.write(query_id + " 0 " + str(doc[0]) + ' 1 1.0 test\n')
         tkinter.messagebox.showinfo("Done", "Query results saved!")
+
+    def save_queries_results(self, queries_dic):
+        queries_file_name = open(self.entry_Save_Path.get() + '/results.txt', "ab")
+        for key in queries_dic.keys():
+            query_id = key
+            docs = queries_dic[key]
+            for doc in docs:
+                queries_file_name.write(query_id + " 0 " + str(doc) + ' 1 1.0 test\n')
 
     @staticmethod
     def doc_entities(doc_name):
