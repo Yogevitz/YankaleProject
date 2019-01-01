@@ -1810,7 +1810,7 @@ class Ranker:
 
 if __name__ == '__main__':
 
-    print('START')
+    print('START!')
 
     # model = KeyedVectors.load_word2vec_format('GoogleNews-vectors-negative300.bin.gz', binary=True)
     # print(model.most_similar("simple"))
