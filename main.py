@@ -24,7 +24,7 @@ import ast
 # from gensim.models import KeyedVectors
 # import nltk
 # # nltk.download('wordnet')
-# from nltk.corpus import wordnet
+from nltk.corpus import wordnet
 from tkinter.filedialog import askopenfilename
 
 
@@ -289,13 +289,13 @@ class GUI:
             tkinter.messagebox.showerror("Error", "Please fill resources path so we can get the stop words")
         else:
             search_results_window = Toplevel(root)
-            save_queries_results_window = Toplevel(root)
+            # save_queries_results_window = Toplevel(root)
             window_width = 250
             window_height = 500
             position_right = int(root.winfo_screenwidth() / 2 - window_width / 2)
             position_down = int(root.winfo_screenheight() / 2 - window_height / 2)
             search_results_window.geometry("250x500+{}+{}".format(position_right, position_down))
-            save_queries_results_window.geometry("150x250+{}+{}".format(position_right, position_down))
+            # save_queries_results_window.geometry("150x250+{}+{}".format(position_right, position_down))
             ranker = 0
 
             # init the stemming and the stop words path
@@ -379,7 +379,7 @@ class GUI:
 
             # many queries from queries doc
             else:
-                queris_results_after_all = {}
+                queries_results_after_all = {}
                 queries = self.get_queries_from_doc()
                 for query_number in queries:
                     q = queries[query_number]['query_text']
@@ -393,42 +393,45 @@ class GUI:
                     searcher.find_docs_containing_current_terms()
                     ranker = Ranker(searcher.docs_containing_current_terms, searcher.query_terms)
                     ranker.rank()
-                    queris_results_after_all[query_number] = []
+                    queries_results_after_all[query_number] = []
                     for doc in ranker.ranked_docs:
-                        queris_results_after_all[query_number].append(doc[0])
+                        queries_results_after_all[query_number].append(doc[0])
 
-                frame1 = Frame(save_queries_results_window)
+                frame1 = Frame(search_results_window)
                 frame1.pack()
-                queries_alert = Label(frame1, text="Please press on the button Save Results")
+                queries_alert = Label(frame1, text="Boogle has finished searching!")
+                queries_alert.pack(side="top")
+                queries_alert = Label(frame1, text="Please save the results:")
                 queries_alert.pack(side="top")
                 queries_results_save_button = Button(frame1, text="Save Results",
-                                             command=lambda: self.save_queries_results(queris_results_after_all))
+                                             command=lambda queries_results_after_all=queries_results_after_all:
+                                             self.save_queries_results(queries_results_after_all))
                 queries_results_save_button.pack(side="top")
 
-                    # if len(ranker.relevant_docs.keys()) > 0:
-                    #     i = 0
-                    #     minimum_score = 0.5
-                    #     current_score = ranker.ranked_docs[i][1]
-                    #     while current_score > minimum_score and i < 50:
-                    #         doc_index = Label(search_results_window, text="%d." % (i + 1))
-                    #         doc_name = ranker.ranked_docs[i][0]
-                    #         doc_button = Button(search_results_window, text=doc_name,
-                    #                             command=lambda doc_name=doc_name: self.doc_entities(doc_name))
-                    #         text.window_create("end", window=doc_index)
-                    #         text.window_create("end", window=doc_button)
-                    #         text.insert("end", "\n")
-                    #         i += 1
-                    #         current_score = ranker.ranked_docs[i][1]
+                # if len(ranker.relevant_docs.keys()) > 0:
+                #     i = 0
+                #     minimum_score = 0.5
+                #     current_score = ranker.ranked_docs[i][1]
+                #     while current_score > minimum_score and i < 50:
+                #         doc_index = Label(search_results_window, text="%d." % (i + 1))
+                #         doc_name = ranker.ranked_docs[i][0]
+                #         doc_button = Button(search_results_window, text=doc_name,
+                #                             command=lambda doc_name=doc_name: self.doc_entities(doc_name))
+                #         text.window_create("end", window=doc_index)
+                #         text.window_create("end", window=doc_button)
+                #         text.insert("end", "\n")
+                #         i += 1
+                #         current_score = ranker.ranked_docs[i][1]
 
-                    # rank_range = min(50, len(ranker.docs_ranks)) + 1
-                    # for i in range(1, rank_range):
-                    #     doc_index = Label(search_results_window, text="%d." % i)
-                    #     doc_name = ranker.docs_ranks[i - 1][0]
-                    #     doc_button = Button(search_results_window, text=doc_name,
-                    #                         command=lambda doc_name=doc_name: self.doc_entities(doc_name))
-                    #     text.window_create("end", window=doc_index)
-                    #     text.window_create("end", window=doc_button)
-                    #     text.insert("end", "\n")
+                # rank_range = min(50, len(ranker.docs_ranks)) + 1
+                # for i in range(1, rank_range):
+                #     doc_index = Label(search_results_window, text="%d." % i)
+                #     doc_name = ranker.docs_ranks[i - 1][0]
+                #     doc_button = Button(search_results_window, text=doc_name,
+                #                         command=lambda doc_name=doc_name: self.doc_entities(doc_name))
+                #     text.window_create("end", window=doc_index)
+                #     text.window_create("end", window=doc_button)
+                #     text.insert("end", "\n")
 
     def browse_save_file(self):
         if len(self.entry_Save_Path.get()) > 0:
@@ -649,7 +652,7 @@ class GUI:
 
     def save_queries_results(self, queries_dic):
         queries_file_name = open(self.entry_Save_Path.get() + '/results.txt', "ab")
-        for key in queries_dic.keys():
+        for key in sorted(queries_dic.iterkeys()):
             query_id = key
             docs = queries_dic[key]
             for doc in docs:
@@ -1685,16 +1688,16 @@ class Searcher:
         self.semantic = semantic
         for qi in q.split(' '):
             # self.query_terms[qi] = {}
-            # if semantic:
-            #     synonyms = {}
-            #     for syn in wordnet.synsets(qi):
-            #         for l in syn.lemmas():
-            #             synonym = str(l.name())
-            #             if synonym not in synonyms.keys():
-            #                 if synonym in main_dictionary.keys():
-            #                     print(synonym)
-            #                     synonyms[synonym] = 1
-            #                     self.query_terms[synonym] = {}
+            if semantic:
+                synonyms = set
+                for syn in wordnet.synsets(qi):
+                    for l in syn.lemmas():
+                        synonym = str(l.name())
+                        if synonym not in synonyms and synonyms.__sizeof__() < 5:
+                            if synonym in main_dictionary.keys():
+                                print(synonym)
+                                synonyms[synonym] = 1
+                                self.query_terms[synonym] = {}
             qi_upper = str(qi).upper()
             qi_lower = str(qi).lower()
             if qi_upper in main_dictionary.keys():
