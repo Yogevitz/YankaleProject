@@ -20,6 +20,11 @@ import linecache
 import queue
 import shutil
 import ast
+# import gensim
+# from gensim.models import KeyedVectors
+# import nltk
+# # nltk.download('wordnet')
+# from nltk.corpus import wordnet
 from tkinter.filedialog import askopenfilename
 
 
@@ -42,11 +47,11 @@ class GUI:
     def __init__(self, root):
         self.topFrame = Frame(root)
         window_width = 300
-        window_height = 400
+        window_height = 370
         position_right = int(root.winfo_screenwidth() / 2 - window_width / 2)
         position_down = int(root.winfo_screenheight() / 2 - window_height / 2)
         root.title("Boogle")
-        root.geometry("300x400+{}+{}".format(position_right, position_down))
+        root.geometry("300x370+{}+{}".format(position_right, position_down))
         root.resizable(0, 0)
         self.text_Resources_Path = Label(root, text="Resources Path:")
         self.text_Save_Path = Label(root, text="Save Path:")
@@ -72,35 +77,35 @@ class GUI:
         self.entry_Query = Entry(root)
         self.queryButton = Button(text="Browse...", fg='black', command=lambda: self.browse_queries_folder())
         self.runButton = Button(text="Run", fg='black', command=lambda: self.start_search())
-        self.text_Queries_Path.grid(row=6)
-        self.text_Query.grid(row=7)
-        self.entry_Queries_Path.grid(row=6, column=1)
-        self.entry_Query.grid(row=7, column=1)
-        self.runButton.grid(row=8, column=1)
-        self.queryButton.grid(row=6, column=2)
+        self.text_Queries_Path.grid(row=5)
+        self.text_Query.grid(row=6)
+        self.entry_Queries_Path.grid(row=5, column=1)
+        self.entry_Query.grid(row=6, column=1)
+        self.runButton.grid(row=7, column=1)
+        self.queryButton.grid(row=5, column=2)
         self.entry_Semantic_Bool = tkinter.IntVar()
         self.semanticLabel = Checkbutton(root, text="Semantic", variable=self.entry_Semantic_Bool)
-        self.semanticLabel.grid(row=5, column=1)
+        self.semanticLabel.grid(row=7, column=0)
         self.cityButton = Button(text="Cities Filter", fg='black', command=lambda: self.city_filter())
         self.cityButton.grid(row=4, column=1)
 
         self.language = Label(root, text="Language:")
-        self.language.grid(row=9, column=0)
+        self.language.grid(row=8, column=0)
         self.language_list = Listbox(root, width=20, height=5)
-        self.language_list.grid(row=9, column=1)
+        self.language_list.grid(row=8, column=1)
         self.reset_button = Button(text="Reset", fg='black', command=lambda: self.reset())
-        self.reset_button.grid(row=10, column=1)
+        self.reset_button.grid(row=9, column=1)
         self.dictionary_button = Button(text="Show Dictionary", fg='black', command=lambda: self.show_dictionary())
-        self.dictionary_button.grid(row=11, column=1)
+        self.dictionary_button.grid(row=10, column=1)
         self.load_dictionary_button = Button(text="Load Dictionary", fg='black',
                                              command=lambda: self.load_dictionary())
-        self.load_dictionary_button.grid(row=12, column=1)
+        self.load_dictionary_button.grid(row=11, column=1)
         self.text_status_label = Label(root, text="Status: ")
         self.status_text_string = StringVar()
         self.text_status = Label(root, textvariable=self.status_text_string, fg="blue")
         self.status_text_string.set("Ready to start")
-        self.text_status_label.grid(row=13, column=0)
-        self.text_status.grid(row=13, column=1)
+        self.text_status_label.grid(row=12, column=0)
+        self.text_status.grid(row=12, column=1)
 
         self.city_into_query = ""
 
@@ -278,6 +283,10 @@ class GUI:
         global docs_dictionary
         if self.entry_Queries_Path.get() == '' and self.entry_Query.get() == '' and self.city_into_query == '':
             tkinter.messagebox.showerror("Error", "Please fill Query or Queries Path")
+        elif len(docs_dictionary.keys()) == 0:
+            tkinter.messagebox.showerror("Error", "Please load dictionaries")
+        elif self.entry_Resources_Path.get() == '':
+            tkinter.messagebox.showerror("Error", "Please fill resources path so we can get the stop words")
         else:
             search_results_window = Toplevel(root)
             window_width = 250
@@ -290,6 +299,7 @@ class GUI:
             # init the stemming and the stop words path
             stop_words_path = self.entry_Resources_Path.get() + '/stop_words.txt'
             stemming_bool = self.entry_Stemming_Bool.get()
+            semantic_bool = self.entry_Semantic_Bool.get()
 
             # one query from the entry query
             if self.entry_Query.get() != '' or (self.city_into_query != '' and self.entry_Query.get() == ''):
@@ -304,8 +314,8 @@ class GUI:
                 parser = Parse(0, stop_words_path, stemming_bool, "")
                 query_tokens = parser.get_tokens(q)
                 query_after_parsing = parser.parse_document("only_one_query", query_tokens)
-                new_qeury_after_parsing = " ".join(query_after_parsing)
-                searcher = Searcher(new_qeury_after_parsing)
+                new_query_after_parsing = " ".join(query_after_parsing)
+                searcher = Searcher(new_query_after_parsing, self.entry_Semantic_Bool.get())
                 searcher.docs_containing_current_terms.clear()
                 searcher.find_docs_containing_current_terms()
                 ranker = Ranker(searcher.docs_containing_current_terms, searcher.query_terms)
@@ -317,7 +327,7 @@ class GUI:
                 results_save_button = Button(frame1, text="Save Results",
                                              command=lambda: self.save_query_results
                                              (": %d" % self.number_of_individual_queries,
-                                              ranker.docs_ranks))
+                                              ranker.ranked_docs))
                 results_save_button.pack(side="top")
 
                 frame2 = Frame(search_results_window)
@@ -329,15 +339,41 @@ class GUI:
                 vsb.pack(side="right", fill="y")
                 text.pack(side="left", fill="both", expand=True)
 
-                rank_range = min(50, len(ranker.docs_ranks)) + 1
-                for i in range(1, rank_range):
+                i = 1
+                for doc_tuple in ranker.ranked_docs:
                     doc_index = Label(search_results_window, text="%d." % i)
-                    doc_name = ranker.docs_ranks[i - 1][0]
+                    i += 1
+                    doc_name = doc_tuple[0]
                     doc_button = Button(search_results_window, text=doc_name,
                                         command=lambda doc_name=doc_name: self.doc_entities(doc_name))
                     text.window_create("end", window=doc_index)
                     text.window_create("end", window=doc_button)
                     text.insert("end", "\n")
+
+                # if len(ranker.relevant_docs.keys()) > 0:
+                #     i = 0
+                #     minimum_score = 0.5
+                #     current_score = ranker.ranked_docs[i][1]
+                #     while current_score > minimum_score and i < 50:
+                #         doc_index = Label(search_results_window, text="%d." % (i + 1))
+                #         doc_name = ranker.ranked_docs[i][0]
+                #         doc_button = Button(search_results_window, text=doc_name,
+                #                             command=lambda doc_name=doc_name: self.doc_entities(doc_name))
+                #         text.window_create("end", window=doc_index)
+                #         text.window_create("end", window=doc_button)
+                #         text.insert("end", "\n")
+                #         i += 1
+                #         current_score = ranker.ranked_docs[i][1]
+
+                # rank_range = min(50, len(ranker.docs_ranks)) + 1
+                # for i in range(1, rank_range):
+                #     doc_index = Label(search_results_window, text="%d." % i)
+                #     doc_name = ranker.docs_ranks[i - 1][0]
+                #     doc_button = Button(search_results_window, text=doc_name,
+                #                         command=lambda doc_name=doc_name: self.doc_entities(doc_name))
+                #     text.window_create("end", window=doc_index)
+                #     text.window_create("end", window=doc_button)
+                #     text.insert("end", "\n")
 
             # many queries from queries doc
             else:
@@ -348,8 +384,8 @@ class GUI:
                     query_tokens = parser.get_tokens(q)
                     query_doc_name = "query " + query_number
                     query_after_parsing = parser.parse_document(query_doc_name, query_tokens)
-                    new_qeury_after_parsing = " ".join(query_after_parsing)
-                    searcher = Searcher(new_qeury_after_parsing)
+                    new_query_after_parsing = " ".join(query_after_parsing)
+                    searcher = Searcher(new_query_after_parsing, self.entry_Semantic_Bool.get())
                     searcher.docs_containing_current_terms.clear()
                     searcher.find_docs_containing_current_terms()
                     ranker = Ranker(searcher.docs_containing_current_terms, searcher.query_terms)
@@ -359,7 +395,8 @@ class GUI:
                     frame1.pack()
 
                     results_save_button = Button(frame1, text="Save Results",
-                                                 command=lambda: self.save_query_results(query_number, ranker.docs_ranks))
+                                                 command=lambda: self.save_query_results(query_number,
+                                                                                         ranker.ranked_docs))
                     results_save_button.pack(side="top")
 
                     frame2 = Frame(search_results_window)
@@ -371,15 +408,41 @@ class GUI:
                     vsb.pack(side="right", fill="y")
                     text.pack(side="left", fill="both", expand=True)
 
-                    rank_range = min(50, len(ranker.docs_ranks)) + 1
-                    for i in range(1, rank_range):
+                    i = 1
+                    for doc_tuple in ranker.ranked_docs:
                         doc_index = Label(search_results_window, text="%d." % i)
-                        doc_name = ranker.docs_ranks[i - 1][0]
+                        i += 1
+                        doc_name = doc_tuple[0]
                         doc_button = Button(search_results_window, text=doc_name,
                                             command=lambda doc_name=doc_name: self.doc_entities(doc_name))
                         text.window_create("end", window=doc_index)
                         text.window_create("end", window=doc_button)
                         text.insert("end", "\n")
+
+                    # if len(ranker.relevant_docs.keys()) > 0:
+                    #     i = 0
+                    #     minimum_score = 0.5
+                    #     current_score = ranker.ranked_docs[i][1]
+                    #     while current_score > minimum_score and i < 50:
+                    #         doc_index = Label(search_results_window, text="%d." % (i + 1))
+                    #         doc_name = ranker.ranked_docs[i][0]
+                    #         doc_button = Button(search_results_window, text=doc_name,
+                    #                             command=lambda doc_name=doc_name: self.doc_entities(doc_name))
+                    #         text.window_create("end", window=doc_index)
+                    #         text.window_create("end", window=doc_button)
+                    #         text.insert("end", "\n")
+                    #         i += 1
+                    #         current_score = ranker.ranked_docs[i][1]
+
+                    # rank_range = min(50, len(ranker.docs_ranks)) + 1
+                    # for i in range(1, rank_range):
+                    #     doc_index = Label(search_results_window, text="%d." % i)
+                    #     doc_name = ranker.docs_ranks[i - 1][0]
+                    #     doc_button = Button(search_results_window, text=doc_name,
+                    #                         command=lambda doc_name=doc_name: self.doc_entities(doc_name))
+                    #     text.window_create("end", window=doc_index)
+                    #     text.window_create("end", window=doc_button)
+                    #     text.insert("end", "\n")
 
             frame3 = Frame(search_results_window)
             frame3.pack()
@@ -514,8 +577,8 @@ class GUI:
                 self.language_list.delete(0, END)
                 loaded_languages_file = open(self.entry_Save_Path.get() + '/languages.txt', 'r').readlines()
                 for language in loaded_languages_file:
-                    if not language.__contains__(''):
-                        self.language_list.insert(END, language)
+                    if language != '':
+                        self.language_list.insert(END, language.replace('<', '').replace('>', ''))
 
             self.status_text_string.set("Dictionary Loaded!")
             self.text_status.config(fg="Blue")
@@ -598,12 +661,10 @@ class GUI:
     def save_query_results(self, query_number, docs):
         queries_file_name = open(self.entry_Save_Path.get() + '/results.txt', "ab")
         query_id = query_number.split(": ")[1]
-        float_number = 0.0
-        # sorted(self.docs_ranks.items(), key=operator.itemgetter(1), reverse=True)
-        rank_range = min(50, len(docs)) + 1
-        for i in range(1, rank_range):
-            doc_name = docs[i - 1][0]
-            queries_file_name.write(query_id + " 0 " + doc_name + ' ' + str(i) + ' ' + str(float_number) + 'test\n')
+        # i = 1
+        # float_number = 1.0
+        for doc in docs:
+            queries_file_name.write(query_id + " 0 " + str(doc[0]) + ' 1 1.0 test\n')
         tkinter.messagebox.showinfo("Done", "Query results saved!")
 
     @staticmethod
@@ -1628,12 +1689,30 @@ class Searcher:
     # {'doc1', 'doc2', 'doc3', ...}
     docs_containing_current_terms = {}
 
-    def __init__(self, q):
+    semantic = False
+
+    def __init__(self, q, semantic):
         self.query = q
         self.query_terms = {}
+        self.semantic = semantic
         for qi in q.split(' '):
-            self.query_terms[str(qi).upper()] = {}
-            self.query_terms[str(qi).lower()] = {}
+            # self.query_terms[qi] = {}
+            # if semantic:
+            #     synonyms = {}
+            #     for syn in wordnet.synsets(qi):
+            #         for l in syn.lemmas():
+            #             synonym = str(l.name())
+            #             if synonym not in synonyms.keys():
+            #                 if synonym in main_dictionary.keys():
+            #                     print(synonym)
+            #                     synonyms[synonym] = 1
+            #                     self.query_terms[synonym] = {}
+            qi_upper = str(qi).upper()
+            qi_lower = str(qi).lower()
+            if qi_upper in main_dictionary.keys():
+                self.query_terms[qi_upper] = 0.0
+            if qi_lower in main_dictionary.keys():
+                self.query_terms[qi_lower] = 0.0
         docs_containing_current_terms = {}
         docs_containing_current_terms.clear()
 
@@ -1660,28 +1739,28 @@ class Searcher:
 
 
 class Ranker:
-    docs_ranks = {}
+    relevant_docs = {}
     query_terms = {}
+    ranked_docs = ()
     k1 = 1.5
     b = 0.75
 
     def __init__(self, docs, terms):
-        self.docs_ranks = docs
+        self.relevant_docs = docs
         self.query_terms = terms
+        self.ranked_docs = ()
 
     def rank(self):
         global main_dictionary
         global docs_dictionary
         global avgdl
         global number_of_docs
-        for doc in self.docs_ranks.keys():
+        max_score = 0
+        for doc in self.relevant_docs.keys():
             score = 0.0
             # Calculate the document score based on BM25
             for term in self.query_terms.keys():
-                if term in main_dictionary.keys():
-                    term_idf = main_dictionary[term]['tf']
-                else:
-                    term_idf = 0
+                term_idf = main_dictionary[term]['tf']
                 if doc in self.query_terms[term].keys():
                     term_doc_tf = self.query_terms[term][doc]
                 else:
@@ -1691,8 +1770,21 @@ class Ranker:
                           ((float(term_doc_tf) * (self.k1 + 1)) /
                            (float(term_doc_tf) + (self.k1 * (1 - self.b +
                                                              (self.b * float(len_of_doc) / float(avgdl)))))))
-            self.docs_ranks[doc] = score
-        self.docs_ranks = sorted(self.docs_ranks.items(), key=operator.itemgetter(1), reverse=True)
+            if max_score < score:
+                max_score = score
+            self.relevant_docs[doc] = score
+        for doc in self.relevant_docs.keys():
+            self.relevant_docs[doc] = (float(self.relevant_docs[doc]) / max_score)
+        self.ranked_docs = sorted(self.relevant_docs.items(), key=operator.itemgetter(1), reverse=True)
+        tmp_ranked_docs = []
+        if len(self.ranked_docs) > 0:
+            i = 0
+            minimum_score = 0.5
+            current_score = self.ranked_docs[i][1]
+            while current_score > minimum_score and i < 50:
+                tmp_ranked_docs.append(self.ranked_docs[i])
+                i += 1
+        self.ranked_docs = tmp_ranked_docs
 
 
 # ---------------- MAIN ---------------- #
@@ -1722,6 +1814,9 @@ class Ranker:
 if __name__ == '__main__':
 
     print('START')
+
+    # model = KeyedVectors.load_word2vec_format('GoogleNews-vectors-negative300.bin.gz', binary=True)
+    # print(model.most_similar("simple"))
 
     main_index = Index()
     main_dictionary = {}
