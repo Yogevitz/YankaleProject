@@ -1713,10 +1713,10 @@ class Searcher:
                 synonym_list = []
                 word_index = 0
                 synonym_index = 0
-                while synonym_index < 5 or word_index > len(words_dict_list.keys()):
+                while synonym_index < 5 or word_index > len(words_dict_list):
                     word_dict = words_dict_list[word_index]
                     if 'syn' in word_dict["tags"]:
-                        synonym = word_dict["word"]
+                        synonym = str(word_dict["word"])
                         if synonym in main_dictionary.keys():
                             synonym_list.append(synonym)
                             self.query_terms[synonym.lower()] = 0.0
