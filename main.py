@@ -808,14 +808,14 @@ class ReadFile:
                             self.cities.add(doc_city.upper())
 
         city_file_name = '/cities_index.txt'
-        city_properties_file_name = 'cities_properties.txt'
-        language_file_name = 'languages.txt'
+        city_properties_file_name = '/cities_properties.txt'
+        language_file_name = '/languages.txt'
         open(save_path + city_file_name, "w")
         city_file = open(save_path + city_file_name, "ab")
         open(save_path + language_file_name, "w")
         language_file = open(save_path + language_file_name, "ab")
-        open(city_properties_file_name, "w")
-        city_properties_file = open(city_properties_file_name, "ab")
+        open(save_path + city_properties_file_name, "w")
+        city_properties_file = open(save_path + city_properties_file_name, "ab")
 
         for key in sorted(self.language_dictionary):
             # str_language = str(self.language_dictionary[key])
