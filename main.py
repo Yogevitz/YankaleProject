@@ -1,3 +1,4 @@
+
 # coding=utf-8
 # from multiprocessing.sharedctypes import synchronized
 # from threading import Thread
@@ -1691,16 +1692,35 @@ class Searcher:
         self.semantic = semantic
         for qi in q.split(' '):
             # self.query_terms[qi] = {}
+            # if semantic:
+                # synonyms = set
+                # for syn in wordnet.synsets(qi):
+                #     for l in syn.lemmas():
+                #         synonym = str(l.name())
+                #         if synonym not in synonyms and synonyms.__sizeof__() < 5:
+                #             if synonym in main_dictionary.keys():
+                #                 print(synonym)
+                #                 synonyms[synonym] = 1
+                #                 self.query_terms[synonym] = {}
+                #
+                #
             if semantic:
-                synonyms = set
-                for syn in wordnet.synsets(qi):
-                    for l in syn.lemmas():
-                        synonym = str(l.name())
-                        if synonym not in synonyms and synonyms.__sizeof__() < 5:
-                            if synonym in main_dictionary.keys():
-                                print(synonym)
-                                synonyms[synonym] = 1
-                                self.query_terms[synonym] = {}
+                # make api call to: "api.datamuse.com/words?ml=" + qi
+                response = requests.get("https://api.datamuse.com/words?ml=" + qi)
+                words_dict_list = json.loads(response.text)
+                synonym_list = []
+                word_index = 0
+                synonym_index = 0
+                while synonym_index < 5 or word_index > len(words_dict_list.keys()):
+                    word_dict = words_dict_list[word_index]
+                    if 'syn' in word_dict["tags"]:
+                        synonym = word_dict["word"]
+                        if synonym in main_dictionary.keys():
+                            synonym_list.append(synonym)
+                            self.query_terms[synonym.lower()] = 0.0
+                            self.query_terms[synonym.upper()] = 0.0
+                            synonym_index += 1
+                    word_index += 1
             qi_upper = str(qi).upper()
             qi_lower = str(qi).lower()
             if qi_upper in main_dictionary.keys():
@@ -1824,3 +1844,6 @@ if __name__ == '__main__':
     root = Tk()
     g = GUI(root)
     root.mainloop()
+
+
+# api.data
