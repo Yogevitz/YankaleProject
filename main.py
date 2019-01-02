@@ -260,9 +260,6 @@ class GUI:
 
             # print('Done Indexing')
 
-            global docs_dictionary
-            global main_dictionary
-
             finish = time.time()
 
             self.status_text_string.set("Done!")
@@ -1572,7 +1569,7 @@ class Parse:
             str_doc_entities = str(docs_dictionary[doc]['entities'])
             docs_file.write("<" + doc + "~" + str_max_tf + "~" + str_max_term + '~'
                             + str_num_of_terms + "~" + docs_dictionary[doc]['doc_city'] + "~"
-                            + str_doc_length + "~" + str_doc_entities + ">\n")
+                            + str_doc_length + "~" + str_doc_entities.replace(' ', '') + ">\n")
         docs_file.write("@@@")
         pass
 
@@ -1739,7 +1736,7 @@ class Ranker:
     relevant_docs = {}
     query_terms = {}
     ranked_docs = ()
-    k1 = 1.5
+    k1 = 2.0
     b = 0.75
 
     def __init__(self, docs, terms):
@@ -1778,7 +1775,7 @@ class Ranker:
             i = 0
             minimum_score = 0.5
             current_score = self.ranked_docs[i][1]
-            while current_score > minimum_score and i < 50:
+            while current_score > minimum_score and i < 50 and i < len(self.ranked_docs):
                 tmp_ranked_docs.append(self.ranked_docs[i])
                 i += 1
         self.ranked_docs = tmp_ranked_docs
