@@ -231,6 +231,20 @@ class GUI:
             # shutil.move(final_merged_file_path, root_folder_path)
             # shutil.move(root_folder_path + '/' + final_merged_file_path, save_path)
 
+            docs_file_name = ('parser_docs' + ending + '.txt')
+            docs_file = open(docs_file_name, "ab")
+            for doc in sorted(docs_dictionary.keys(), key=str.lower):
+                str_max_tf = str(docs_dictionary[doc]['max_tf'])
+                str_max_term = str(docs_dictionary[doc]['max_term'])
+                str_num_of_terms = str(docs_dictionary[doc]['num_of_terms'])
+                str_doc_length = str(docs_dictionary[doc]['doc_length'])
+                str_doc_entities = str(docs_dictionary[doc]['entities'])
+                docs_file.write("<" + doc + "~" + str_max_tf + "~" + str_max_term + '~'
+                                + str_num_of_terms + "~" + docs_dictionary[doc]['doc_city'] + "~"
+                                + str_doc_length + "~" + str_doc_entities.replace(' ', '') + ">\n")
+            docs_file.write("@@@")
+            docs_file.close()
+
             if os.path.exists(save_path + '/parser_docs%s.txt' % ending):
                 os.remove(save_path + '/parser_docs%s.txt' % ending)
             shutil.move('parser_docs%s.txt' % ending, save_path)
@@ -1552,7 +1566,6 @@ class Parse:
             ending = '_with_stemming'
         terms_file_name = (('parser_%d_terms' % self.parser_index) + ending + '.txt')
         # docs_file_name = (('parser_%d_docs' % self.parser_index) + ending + '.txt')
-        docs_file_name = ('parser_docs' + ending + '.txt')
         open(terms_file_name, "w")
         terms_file = open(terms_file_name, "ab")
         for key in sorted(self.terms_dictionary.keys(), key=str.lower):
@@ -1561,17 +1574,6 @@ class Parse:
                 if 'tf_per_doc' in self.terms_dictionary[key].keys() else ''
             terms_file.write("<" + key + "~" + str_df + "~" + str_tf_per_doc + ">\n")
         terms_file.write("@@@")
-        docs_file = open(docs_file_name, "ab")
-        for doc in sorted(docs_dictionary.keys(), key=str.lower):
-            str_max_tf = str(docs_dictionary[doc]['max_tf'])
-            str_max_term = str(docs_dictionary[doc]['max_term'])
-            str_num_of_terms = str(docs_dictionary[doc]['num_of_terms'])
-            str_doc_length = str(docs_dictionary[doc]['doc_length'])
-            str_doc_entities = str(docs_dictionary[doc]['entities'])
-            docs_file.write("<" + doc + "~" + str_max_tf + "~" + str_max_term + '~'
-                            + str_num_of_terms + "~" + docs_dictionary[doc]['doc_city'] + "~"
-                            + str_doc_length + "~" + str_doc_entities.replace(' ', '') + ">\n")
-        docs_file.write("@@@")
         pass
 
 
@@ -1745,8 +1747,10 @@ class Searcher:
             term_post_line = linecache.getline(g.entry_Save_Path.get() + "/posting.txt", term_post_index)
             # Get the term docs from the posting
             term_docs = ast.literal_eval((term_post_line.split('~')[2])[:-2])
+            # Get the term IDF
+            term_idf = ast.literal_eval(term_post_line.split('~')[1])
             # Keep the term with and his frequencies in each doc
-            self.query_terms[term] = term_docs
+            self.query_terms[term] = {'idf': term_idf, 'docs': term_docs}
             # Keep all docs that contain terms from the query
             for term_doc in term_docs.keys():
                 self.docs_containing_current_terms[term_doc] = ''
@@ -1756,7 +1760,7 @@ class Ranker:
     relevant_docs = {}
     query_terms = {}
     ranked_docs = ()
-    k1 = 2.0
+    k1 = 1.2
     b = 0.75
 
     def __init__(self, docs, terms):
@@ -1774,9 +1778,9 @@ class Ranker:
             score = 0.0
             # Calculate the document score based on BM25
             for term in self.query_terms.keys():
-                term_idf = main_dictionary[term]['tf']
-                if doc in self.query_terms[term].keys():
-                    term_doc_tf = self.query_terms[term][doc]
+                term_idf = self.query_terms[term]['idf']
+                if doc in self.query_terms[term]['docs'].keys():
+                    term_doc_tf = self.query_terms[term]['docs'][doc]
                 else:
                     term_doc_tf = 0
                 len_of_doc = docs_dictionary[doc]['doc_length']
