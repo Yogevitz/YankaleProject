@@ -233,7 +233,8 @@ class GUI:
 
             docs_file_name = ('parser_docs' + ending + '.txt')
             docs_file = open(docs_file_name, "ab")
-            for doc in sorted(docs_dictionary.keys(), key=str.lower):
+            # for doc in sorted(docs_dictionary.keys(), key=str.lower):
+            for doc in docs_dictionary.keys():
                 str_max_tf = str(docs_dictionary[doc]['max_tf'])
                 str_max_term = str(docs_dictionary[doc]['max_term'])
                 str_num_of_terms = str(docs_dictionary[doc]['num_of_terms'])
@@ -1022,7 +1023,7 @@ class Parse:
                             if doc_name not in self.terms_dictionary[term_lower]['docs']:
                                 self.terms_dictionary[term_lower]['docs'].append(doc_name)
                                 self.terms_dictionary[term_lower]['df'] = len(self.terms_dictionary[term_lower]
-                                                                              ['docs'])
+                                                                              ['docs']) + 1
                             if term_lower not in doc_terms:
                                 doc_terms[term_lower] = {'tf': 1, 'indexes': [term_index]}
                             else:
@@ -1058,7 +1059,7 @@ class Parse:
                                 self.terms_dictionary.pop(term_upper)
                                 if tmp_tf_per_doc != 'none':
                                     self.terms_dictionary[term_lower] = {'docs': temp_docs,
-                                                                         'df': temp_df,
+                                                                         'df': temp_df + 1,
                                                                          'tf_per_doc': tmp_tf_per_doc}
                                 else:
                                     self.terms_dictionary[term_lower] = {'docs': temp_docs, 'df': temp_df}
@@ -1719,16 +1720,16 @@ class Searcher:
                         synonym = str(word_dict["word"])
                         if synonym in main_dictionary.keys():
                             synonym_list.append(synonym)
-                            self.query_terms[synonym.lower()] = 0.0
-                            self.query_terms[synonym.upper()] = 0.0
+                            self.query_terms[synonym.lower()] = {}
+                            self.query_terms[synonym.upper()] = {}
                             synonym_index += 1
                     word_index += 1
             qi_upper = str(qi).upper()
             qi_lower = str(qi).lower()
             if qi_upper in main_dictionary.keys():
-                self.query_terms[qi_upper] = 0.0
+                self.query_terms[qi_upper] = {}
             if qi_lower in main_dictionary.keys():
-                self.query_terms[qi_lower] = 0.0
+                self.query_terms[qi_lower] = {}
         docs_containing_current_terms = {}
         docs_containing_current_terms.clear()
 
@@ -1775,6 +1776,8 @@ class Ranker:
         global number_of_docs
         max_score = 0
         for doc in self.relevant_docs.keys():
+            if doc == 'FT941-9999':
+                print('FT941-9999')
             score = 0.0
             # Calculate the document score based on BM25
             for term in self.query_terms.keys():
